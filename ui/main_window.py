@@ -388,7 +388,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addLayout(self.gridLayout_4)
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
         self.space_widget = MplWidget(parent=self.centralwidget,
-                                      geo_map=MapLAEA(cbar=True))
+                                      geo_map=MapLAEA(is_cbar=True))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)

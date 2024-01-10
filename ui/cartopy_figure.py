@@ -5,6 +5,7 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 from matplotlib.pyplot import axes, figure, show, tight_layout, colorbar, Normalize
 from matplotlib.cm import ScalarMappable
+from matplotlib import colormaps
 
 UA_COORDS = {'min_lat': 44, 'max_lat': 52.5,
              'min_lon': 22, 'max_lon': 40.5,
@@ -24,8 +25,8 @@ DEFAULT_LABEL_PARAMS = {'size': 14, 'color': 'black',
 class MapLAEA:
     def __init__(self, shp_file_name=None, coords=None,
                  shp_params=None, grid_params=None,
-                 label_params=None, cbar=False):
-        self.coords = EU_COORDS.copy() if coords is None else coords.copy()
+                 label_params=None, is_cbar=False):
+        self.coords = UA_COORDS.copy() if coords is None else coords.copy()
         self.shp_params = DEFAULT_SHP_PARAMS.copy() if shp_params is None \
             else shp_params.copy()
         self.grid_params = DEFAULT_GRID_PARAMS.copy() if grid_params is None \
@@ -33,7 +34,8 @@ class MapLAEA:
         self.label_params = DEFAULT_LABEL_PARAMS.copy() if label_params is None \
             else label_params.copy()
         self.shp_file_name = shp_file_name
-        self.cbar = cbar
+        self.is_cbar = is_cbar
+        self.color_bar = None
 
     def create_figure(self):
         current_crs = ccrs.LambertAzimuthalEqualArea(
@@ -66,10 +68,11 @@ class MapLAEA:
         ax.set_extent([self.coords['min_lon'], self.coords['max_lon'],
                        self.coords['min_lat'], self.coords['max_lat']],
                       crs=ccrs.PlateCarree())
-        if self.cbar:
-            norm = Normalize(-0.2, 0.2)
-            colorbar(mappable=ScalarMappable(norm=norm), pad=0.15,
-                     orientation='vertical')
+        if self.is_cbar:
+            norm = Normalize(-1, 1)
+            cmap = colormaps['jet']
+            self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.15,
+                                      orientation='vertical')
         tight_layout(pad=2)
         return output_figure
 
