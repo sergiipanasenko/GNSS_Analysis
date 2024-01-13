@@ -70,7 +70,7 @@ class MapLAEA:
                       crs=ccrs.PlateCarree())
         if self.is_cbar:
             norm = Normalize(-1, 1)
-            cmap = colormaps['jet']
+            cmap = colormaps['rainbow']
             self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.15,
                                       orientation='vertical')
         tight_layout(pad=2)

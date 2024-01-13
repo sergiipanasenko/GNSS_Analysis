@@ -1,16 +1,16 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QSizePolicy
 
+from gnss_archive import read_gnss_data, get_in_file_name
 from ui.cartopy_figure import MapLAEA, DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS
 from ui.main_window import Ui_MainWindow
 import cartopy.crs as ccrs
 
-from zipfile import Path
+
 from matplotlib.patches import Rectangle
-from matplotlib import colormaps
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 
-from ui.qt_utils import MplWidget, MplCanvas
+from math import ceil, cos, radians
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -45,17 +45,19 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
 
         self.lineEdit_9.setText(str(0.01))
         self.lineEdit_10.setText(str(12))
-        self.lineEdit_11.setText(str(0.8))
+        self.lineEdit_11.setText(str(0.75))
         self.lineEdit_12.setText(str(46.777778))
-        self.lineEdit_14.setText(str(0.8))
+        self.lineEdit_14.setText(str(0.75))
         self.lineEdit_13.setText(str(33.370278))
 
         self.rec_file = None
         self.gnss_archive = None
         self.filter_dir = 'Window_3600_Seconds'
+        self.in_dir = 'results/in'
+        self.out_dir = 'results/out'
         self.min_elm = 30
         self.gnss_data = None
-        self.gnss_data_title = None
+        self.gnss_data_title = ['hour', 'min', 'sec', 'dTEC', 'azm', 'elm', 'gdlat', 'gdlon']
 
         # connections
         self.pushButton.clicked.connect(self.update_coords)
@@ -76,7 +78,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.space_widget.geo_map.coords = coords
         s_width, s_height = self.space_widget.canvas.figure.get_size_inches()
         self.space_widget.geo_map = MapLAEA(coords=coords, is_cbar=True)
-        self.space_widget.canvas.figure = (self.space_widget.geo_map.create_figure())
+        self.space_widget.canvas.figure = self.space_widget.geo_map.create_figure()
+        self.space_color_bar = self.space_widget.geo_map.color_bar
         self.space_widget.canvas.figure.set_size_inches(s_width, s_height)
         self.space_widget.canvas.draw()
         r_label_params = DEFAULT_LABEL_PARAMS | {'frame_on': False}
@@ -137,35 +140,23 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         if file_name[0]:
             self.gnss_archive = file_name[0]
 
-    def read_gnss_data(self):
-        self.gnss_data = []
-        root_dir = self.gnss_archive.split('/')[-1].split('.')[0]
-        rec_paths = Path(self.gnss_archive, f'{root_dir}/')
-        rec_dirs = (rec_dir.name for rec_dir in rec_paths.iterdir())
-        for rec_dir in rec_dirs:
-            for i in range(1, 33):
-                at_file = f"{root_dir}/{rec_dir}/{self.filter_dir}/G{str(i).zfill(2)}.txt"
-                g_file = Path(self.gnss_archive, at_file)
-                if g_file.exists():
-                    with g_file.open(mode='r') as txt:
-                        self.gnss_data_title = txt.readline().split()
-                        lines_raw = txt.readlines()
-                    lines = list(filter(lambda x:
-                                        float(x.split()[self.gnss_data_title.index('elm')]) > self.min_elm,
-                                        lines_raw))
-                    self.gnss_data.extend(lines)
-        print("Reading is completed.")
+    def read_in_data(self):
+        if self.gnss_data is None:
+            in_file_name = f"{self.in_dir}/{get_in_file_name(self.gnss_archive, self.filter_dir)}"
+            with open(in_file_name, mode='r') as in_file:
+                self.gnss_data = in_file.readlines()
 
     def save_timestamp_data(self, timestamp, timespan):
-        if self.gnss_data is None:
-            self.read_gnss_data()
+        self.read_in_data()
+        cmap = self.space_color_bar.cmap
         root_dir = self.gnss_archive.split('/')[-1].split('.')[0]
         day_num = root_dir[:3]
+        year = root_dir[4:8]
         save_time = str(timestamp).replace('.', 'p')
-        out_data_file = \
-            f'd:/Surnames/Skipa/June5-8_2023/{day_num}/1/Time/{save_time}.txt'
-        out_fig_file = \
-            f'd:/Surnames/Skipa/June5-8_2023/{day_num}/1/Time/Figures/{save_time}.png'
+        save_span = str(timespan).replace('.', 'p')
+        out_data_dir = f'{self.out_dir}/{year}/{day_num}/1/Time'
+        out_data_file = f'{out_data_dir}/{save_time}_{save_span}.txt'
+        out_fig_file = f'{out_data_dir}/Figures/{save_time}_{save_span}.png'
         with (open(out_data_file, mode='w') as data_file):
             for line in self.gnss_data:
                 data = list(map(float, line.split()))
@@ -177,39 +168,54 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                     data_file.write(out_str)
         self.update_coords()
         with (open(out_data_file, mode='r') as data_file):
-            data = list(zip(*[line.split() for line in data_file]))
-            lon_data = list(map(float, data[0]))
-            lat_data = list(map(float, data[1]))
-            dtec = list(map(float, data[3]))
+            data = [list(map(float, line.split())) for line in data_file]
+            min_lat = float(self.lineEdit.text())
+            max_lat = float(self.lineEdit_2.text())
+            min_lon = float(self.lineEdit_4.text())
+            max_lon = float(self.lineEdit_3.text())
             lat_span = float(self.lineEdit_11.text())
             lon_span = float(self.lineEdit_14.text())
-            norm = Normalize(vmin=-0.2, vmax=0.2)
-            c = self.space_color_bar.cmap(norm(dtec))
-            for i in range(len(lat_data)):
-                lon_coord = lon_data[i] - lon_span / 2
-                lat_coord = lat_data[i] - lat_span / 2
-                self.space_axes.add_patch(Rectangle(xy=(lon_coord, lat_coord),
-                                                    width=lon_span, height=lat_span,
-                                                    edgecolor='none',
-                                                    facecolor=c[i],
-                                                    transform=ccrs.PlateCarree()))
+            n_lat = ceil((max_lat - min_lat) / lat_span)
+            plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
+            norm = Normalize(vmin=-0.5, vmax=0.5)
+            self.space_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
+            for lat in plot_lat:
+                lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2, data))
+                if lat_data:
+                    corr_lon_span = lon_span / cos(radians(lat))
+                    n_lon = ceil((max_lon - min_lon) / corr_lon_span)
+                    plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
+                    for lon in plot_lon:
+                        lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
+                        if lat_lon_data:
+                            lat_lon_dtec = list(zip(*lat_lon_data))[3]
+                            dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
+                            c = self.space_color_bar.cmap(norm(dtec_value))
+                            self.space_axes.add_patch(Rectangle(xy=(lon - corr_lon_span / 2, lat - lat_span / 2),
+                                                                width=corr_lon_span, height=lat_span,
+                                                                edgecolor='none',
+                                                                facecolor=c,
+                                                                transform=ccrs.PlateCarree()))
+
         self.space_widget.canvas.draw()
         self.space_widget.canvas.figure.savefig(dpi=200, fname=out_fig_file)
 
     def save_coords_stamp_data(self, coords_stamp, coords_span):
-        if self.gnss_data is None:
-            self.read_gnss_data()
+        self.read_in_data()
         root_dir = self.gnss_archive.split('/')[-1].split('.')[0]
         day_num = root_dir[:3]
+        year = root_dir[4:8]
         current_lon = coords_stamp['lon']
         current_lat = coords_stamp['lat']
         lon_span = coords_span['lon']
         lat_span = coords_span['lat']
         lon_str = str(current_lon).replace('.', 'p')
         lat_str = str(current_lat).replace('.', 'p')
-        save_coords = f"{lon_str}lon_{lat_str}lat"
-        out_data_file = \
-            f'd:/Surnames/Skipa/June5-8_2023/{day_num}/1/Coords/{save_coords}.txt'
+        lon_span_str = str(lon_span).replace('.', 'p')
+        lat_span_str = str(lat_span).replace('.', 'p')
+        save_coords = f"{lon_str}_{lon_span_str}lon_{lat_str}_{lat_span_str}lat"
+        out_data_dir = f'{self.out_dir}/{year}/{day_num}/1/Coords'
+        out_data_file = f'{out_data_dir}/{save_coords}.txt'
         with (open(out_data_file, mode='w') as data_file):
             for line in self.gnss_data:
                 data = list(map(float, line.split()))
@@ -221,7 +227,6 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                     time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
                     out_str = f"{time}\t{g_data['dTEC']}\n"
                     data_file.write(out_str)
-
         with (open(out_data_file, mode='r') as data_file):
             data = list(zip(*[line.split() for line in data_file]))
             time = list(map(float, data[0]))
