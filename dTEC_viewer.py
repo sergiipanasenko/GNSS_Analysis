@@ -177,7 +177,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             lon_span = float(self.lineEdit_14.text())
             n_lat = ceil((max_lat - min_lat) / lat_span)
             plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
-            norm = Normalize(vmin=-0.5, vmax=0.5)
+            norm = Normalize(vmin=-0.2, vmax=0.2)
             self.space_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
             for lat in plot_lat:
                 lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2, data))
@@ -229,11 +229,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                     data_file.write(out_str)
         with (open(out_data_file, mode='r') as data_file):
             data = list(zip(*[line.split() for line in data_file]))
-            time = list(map(float, data[0]))
-            dtec = list(map(float, data[1]))
-        self.time_axes.clear()
-        self.time_axes.scatter(time, dtec, s=0.8, color='blue')
-        self.time_widget.canvas.draw()
+            self.time_axes.clear()
+            if data:
+                time = list(map(float, data[0]))
+                dtec = list(map(float, data[1]))
+                self.time_axes.scatter(time, dtec, s=0.8, color='blue')
+                self.time_widget.canvas.draw()
 
     def parse_data(self):
         if self.gnss_archive:

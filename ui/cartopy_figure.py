@@ -11,8 +11,8 @@ UA_COORDS = {'min_lat': 44, 'max_lat': 52.5,
              'min_lon': 22, 'max_lon': 40.5,
              'central_long': 31.5, 'central_lat': 48.5}
 EU_COORDS = {'min_lat': 36, 'max_lat': 71,
-             'min_lon': -10, 'max_lon': 40,
-             'central_long': 15, 'central_lat': 53.5}
+             'min_lon': -10, 'max_lon': 30,
+             'central_long': 10, 'central_lat': 53.5}
 
 DEFAULT_SHP_PARAMS = {'face_color': 'none', 'edge_color': 'gray',
                       'border_width': 0.3, 'coast_width': 0.3}
@@ -26,7 +26,7 @@ class MapLAEA:
     def __init__(self, shp_file_name=None, coords=None,
                  shp_params=None, grid_params=None,
                  label_params=None, is_cbar=False):
-        self.coords = UA_COORDS.copy() if coords is None else coords.copy()
+        self.coords = EU_COORDS.copy() if coords is None else coords.copy()
         self.shp_params = DEFAULT_SHP_PARAMS.copy() if shp_params is None \
             else shp_params.copy()
         self.grid_params = DEFAULT_GRID_PARAMS.copy() if grid_params is None \
