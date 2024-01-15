@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QSizePolicy
 
-from gnss_archive import read_gnss_data, get_in_file_name
+from gnss_archive import read_gnss_data, get_in_file_name, get_receiver_list, get_root_dir
 from ui.cartopy_figure import MapLAEA, DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS
 from ui.main_window import Ui_MainWindow
 import cartopy.crs as ccrs
@@ -11,6 +11,7 @@ from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 
 from math import ceil, cos, radians
+import time
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -50,12 +51,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.lineEdit_14.setText(str(0.75))
         self.lineEdit_13.setText(str(33.370278))
 
-        self.rec_file = None
         self.gnss_archive = None
-        self.filter_dir = 'Window_3600_Seconds'
+        self.filter_dir = 'Window_7200_Seconds'
         self.in_dir = 'results/in'
         self.out_dir = 'results/out'
         self.min_elm = 30
+        self.dtec_limits = [-0.5, 0.5]
         self.gnss_data = None
         self.gnss_data_title = ['hour', 'min', 'sec', 'dTEC', 'azm', 'elm', 'gdlat', 'gdlon']
 
@@ -63,7 +64,6 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.pushButton.clicked.connect(self.update_coords)
         self.pushButton_2.clicked.connect(self.update_time_value)
         self.pushButton_3.clicked.connect(self.parse_data)
-        self.actionOpen_receiver_list.triggered.connect(self.choose_receiver_file)
         self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
 
     def update_coords(self):
@@ -94,7 +94,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.space_axes = self.space_widget.canvas.figure.axes[0]
         self.space_cbar_axes = self.space_widget.canvas.figure.axes[1]
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
-        self.__plot_receivers()
+        self.plot_receivers()
 
     def update_time_value(self):
         min_time = float(self.lineEdit_6.text())
@@ -105,28 +105,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.time_axes.set_ylim(min_value, max_value)
         self.time_widget.canvas.draw()
 
-    def choose_receiver_file(self):
-        file_name = QFileDialog.getOpenFileName(
-            caption="Open receiver list file",
-            filter="All files (*);;Text files (*.dat *.txt)",
-            initialFilter="Text files (*.dat *.txt)",
-            directory='d:/Surnames/Skipa/')
-        if file_name[0]:
-            self.rec_file = file_name[0]
-            self.__plot_receivers()
-
-    def __plot_receivers(self):
-        if self.rec_file:
-            rec_names = []
-            rec_lat = []
-            rec_lon = []
-            with open(self.rec_file) as receiver_file:
-                _ = receiver_file.readline()
-                for line in receiver_file:
-                    data = line.split()
-                    rec_names.append(data[0])
-                    rec_lat.append(float(data[1]))
-                    rec_lon.append(float(data[2]))
+    def plot_receivers(self):
+            _, rec_lon, rec_lat = get_receiver_list(self.gnss_archive)
             self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=10, marker='o',
                                        transform=ccrs.PlateCarree())
             self.receiver_widget.canvas.draw()
@@ -139,10 +119,11 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             directory='d:/Surnames/Skipa/')
         if file_name[0]:
             self.gnss_archive = file_name[0]
+            self.plot_receivers()
 
     def read_in_data(self):
         if self.gnss_data is None:
-            in_file_name = f"{self.in_dir}/{get_in_file_name(self.gnss_archive, self.filter_dir)}"
+            in_file_name = f"{self.in_dir}/{get_in_file_name(self.gnss_archive, self.filter_dir)}.txt"
             with open(in_file_name, mode='r') as in_file:
                 self.gnss_data = in_file.readlines()
 
@@ -161,8 +142,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             for line in self.gnss_data:
                 data = list(map(float, line.split()))
                 g_data = dict(zip(self.gnss_data_title, data))
-                time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
-                time_cond = (time >= timestamp - timespan / 2) and (time <= timestamp + timespan / 2)
+                c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
+                time_cond = (c_time >= timestamp - timespan / 2) and (c_time <= timestamp + timespan / 2)
                 if time_cond:
                     out_str = f"{g_data['gdlon']}\t{g_data['gdlat']}\t{g_data['elm']}\t{g_data['dTEC']}\n"
                     data_file.write(out_str)
@@ -177,7 +158,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             lon_span = float(self.lineEdit_14.text())
             n_lat = ceil((max_lat - min_lat) / lat_span)
             plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
-            norm = Normalize(vmin=-0.2, vmax=0.2)
+            vmin, vmax = self.dtec_limits
+            norm = Normalize(vmin=vmin, vmax=vmax)
             self.space_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
             for lat in plot_lat:
                 lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2, data))
@@ -197,6 +179,16 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                                                 facecolor=c,
                                                                 transform=ccrs.PlateCarree()))
 
+        current_date = get_root_dir(self.gnss_archive)[4:]
+        current_time = time.strftime("%H:%M:%S", time.gmtime(timestamp * 3600))
+        title =f"{current_date}    {current_time}"
+        current_lat = float(self.lineEdit_12.text())
+        current_lon = float(self.lineEdit_13.text())
+        self.space_axes.scatter(current_lon, current_lat, marker='d', s=40, color='black',
+                                transform=ccrs.PlateCarree())
+        self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
+                                 transform=ccrs.PlateCarree())
+        self.space_widget.canvas.figure.suptitle(title)
         self.space_widget.canvas.draw()
         self.space_widget.canvas.figure.savefig(dpi=200, fname=out_fig_file)
 
@@ -224,17 +216,27 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                         g_data['gdlat'] <= current_lat + lat_span / 2,
                         g_data['gdlon'] >= current_lon - lon_span / 2,
                         g_data['gdlon'] <= current_lon + lon_span / 2)):
-                    time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
-                    out_str = f"{time}\t{g_data['dTEC']}\n"
+                    c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
+                    out_str = f"{c_time}\t{g_data['dTEC']}\n"
                     data_file.write(out_str)
         with (open(out_data_file, mode='r') as data_file):
-            data = list(zip(*[line.split() for line in data_file]))
-            self.time_axes.clear()
-            if data:
-                time = list(map(float, data[0]))
-                dtec = list(map(float, data[1]))
-                self.time_axes.scatter(time, dtec, s=0.8, color='blue')
-                self.time_widget.canvas.draw()
+            data = [list(map(float, line.split())) for line in data_file]
+            time_value = []
+            dtec_value = []
+            min_time = float(self.lineEdit_6.text())
+            max_time = float(self.lineEdit_5.text())
+            time_span = 1 / 120
+            n_time = ceil((max_time - min_time) / time_span)
+            plot_time = [min_time + j * time_span for j in range(n_time)]
+            for c_time in plot_time:
+                time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2, data))
+                if time_data:
+                    time_dtec = list(zip(*time_data))[1]
+                    dtec_value.append(sum(time_dtec) / len(time_dtec))
+                    time_value.append(c_time)
+        self.update_time_value()
+        self.time_axes.scatter(time_value, dtec_value, s=0.8, color='blue')
+        self.time_widget.canvas.draw()
 
     def parse_data(self):
         if self.gnss_archive:
