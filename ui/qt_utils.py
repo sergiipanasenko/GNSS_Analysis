@@ -13,11 +13,11 @@ class MplCanvas(FigureCanvas):
 
 
 class MplWidget(QWidget):
-    def __init__(self, parent=None, geo_map=None):
+    def __init__(self, parent=None, axes_map=None):
         # parent initialisation
         super().__init__()
-        self.geo_map = geo_map
-        figure = mpl_figure() if geo_map is None else geo_map.create_figure()
+        self.axes_map = axes_map
+        figure = mpl_figure() if axes_map is None else axes_map.create_figure()
         # Create canvas object
         self.canvas = MplCanvas(figure)
         self.vbl = QVBoxLayout()  # Set box for plotting

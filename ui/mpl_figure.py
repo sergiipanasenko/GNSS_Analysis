@@ -6,7 +6,7 @@ DEFAULT_TICK_PARAMS = {'font_size': 24, 'font_weight': 'normal',
 DEFAULT_FIGURE_PARAMS = {'pad': 2}
 
 
-class MapAxes:
+class AxesMap:
     def __init__(self, tick_params=None, figure_params=None):
         self.tick_params = DEFAULT_TICK_PARAMS.copy() if tick_params is None \
             else tick_params.copy()
@@ -28,5 +28,5 @@ class MapAxes:
 
 
 if __name__ == '__main__':
-    fig = MapAxes().create_figure()
+    fig = AxesMap().create_figure()
     plt.show()

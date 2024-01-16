@@ -22,7 +22,7 @@ DEFAULT_LABEL_PARAMS = {'size': 14, 'color': 'black',
                         'frame_on': True}
 
 
-class MapLAEA:
+class GeoAxesMap:
     def __init__(self, shp_file_name=None, coords=None,
                  shp_params=None, grid_params=None,
                  label_params=None, is_cbar=False):
@@ -78,5 +78,5 @@ class MapLAEA:
 
 
 if __name__ == '__main__':
-    fig = MapLAEA(shp_file_name='geo/cntry02.shp').create_figure()
+    fig = GeoAxesMap(shp_file_name='geo/cntry02.shp').create_figure()
     show()

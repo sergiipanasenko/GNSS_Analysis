@@ -1,8 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from ui.qt_utils import MplWidget
 
-from ui.mpl_figure import DEFAULT_TICK_PARAMS, MapAxes
-from ui.cartopy_figure import (DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS, MapLAEA)
+from ui.mpl_figure import DEFAULT_TICK_PARAMS, AxesMap
+from ui.cartopy_figure import (DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS, GeoAxesMap)
 
 
 class Ui_MainWindow(object):
@@ -388,7 +388,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addLayout(self.gridLayout_4)
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
         self.space_widget = MplWidget(parent=self.centralwidget,
-                                      geo_map=MapLAEA(is_cbar=True))
+                                      axes_map=GeoAxesMap(is_cbar=True))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -398,8 +398,8 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.space_widget, 0, 1, 1, 1)
         r_label_params = DEFAULT_LABEL_PARAMS | {'frame_on': False}
         r_grid_params = DEFAULT_GRID_PARAMS | {'draw_labels': False}
-        r_map = MapLAEA(label_params=r_label_params, grid_params=r_grid_params)
-        self.receiver_widget = MplWidget(parent=self.centralwidget, geo_map=r_map)
+        r_map = GeoAxesMap(label_params=r_label_params, grid_params=r_grid_params)
+        self.receiver_widget = MplWidget(parent=self.centralwidget, axes_map=r_map)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -411,9 +411,9 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.receiver_widget, 1, 0, 1, 1)
         t_tick_params = DEFAULT_TICK_PARAMS.copy()
         t_tick_params['font_size'] = 12
-        t_map = MapAxes(tick_params=t_tick_params)
+        t_map = AxesMap(tick_params=t_tick_params)
         self.time_widget = MplWidget(parent=self.centralwidget,
-                                     geo_map=t_map)
+                                     axes_map=t_map)
         self.time_widget.setObjectName("time_widget")
         self.gridLayout.addWidget(self.time_widget, 1, 1, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
