@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog
 
-from gnss_archive import GnssArchive
+from gnss import GnssArchive
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS
 from ui.main_window import Ui_MainWindow
 import cartopy.crs as ccrs
@@ -103,10 +103,10 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.time_widget.canvas.draw()
 
     def plot_receivers(self):
-            _, rec_lon, rec_lat = self.gnss_archive.get_receiver_coords()
-            self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=10, marker='o',
-                                       transform=ccrs.PlateCarree())
-            self.receiver_widget.canvas.draw()
+        _, rec_lon, rec_lat = self.gnss_archive.get_receiver_coords()
+        self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=10, marker='o',
+                                   transform=ccrs.PlateCarree())
+        self.receiver_widget.canvas.draw()
 
     def choose_gnss_data_archive(self):
         file_name = QFileDialog.getOpenFileName(
@@ -115,13 +115,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             initialFilter="Archive files (*.zip)",
             directory='d:/Surnames/Skipa/')
         if file_name[0]:
-            self.gnss_archive = GnssArchive(file_name[0], self.in_dir,
-                                            self.out_dir, self.filter_sec)
+            self.gnss_archive = GnssArchive(file_name[0])
             self.plot_receivers()
 
     def save_timestamp_data(self, timestamp, timespan):
-        self.gnss_archive.parse_gnss_archive()
-        self.gnss_archive.read_gnss_data()
+        # self.gnss_archive.parse_gnss_archive(self.in_dir, self.filter_sec)
+        # self.gnss_archive.read_gnss_data()
         cmap = self.space_color_bar.cmap
         root_dir = self.gnss_archive.root_dir
         day_num = self.gnss_archive.day_number
@@ -174,7 +173,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
 
         current_date = self.gnss_archive.date
         current_time = time.strftime("%H:%M:%S", time.gmtime(timestamp * 3600))
-        title =f"{current_date}    {current_time}"
+        title = f"{current_date}    {current_time}"
         current_lat = float(self.lineEdit_12.text())
         current_lon = float(self.lineEdit_13.text())
         self.space_axes.scatter(current_lon, current_lat, marker='d', s=40, color='black',

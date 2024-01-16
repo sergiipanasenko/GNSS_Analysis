@@ -3,24 +3,15 @@ from sys import argv
 import os
 
 
-filter_dirs = {3600: 'Window_3600_Seconds', 7200: 'Window_3600_Seconds'}
-
-
 class GnssArchive:
-    def __init__(self, archive_name: str, in_dir: str, out_dir: str, filter_sec: int):
-        self.filter_dir = filter_dirs.get(filter_sec)
-        if not self.filter_dir:
-            raise ValueError("Wrong value of filter window. Must be 3600 or 7200")
+    def __init__(self, archive_name: str):
+        self.filter_dirs = {3600: 'Window_3600_Seconds',
+                            7200: 'Window_7200_Seconds'}
         self.archive_name = archive_name
-        self.in_dir = in_dir
-        self.out_dir = out_dir
-        self.filter_sec = str(filter_sec)
         self.root_dir = self.__get_root_dir()
         self.day_number = self.__get_day_number()
         self.year = self.__get_year()
         self.date = self.__get_date()
-        self.file_stem = self.__get_parsed_file_stem()
-        self.gnss_data = []
 
     def __get_root_dir(self):
         return self.archive_name.split('/')[-1].split('.')[0]
@@ -34,12 +25,18 @@ class GnssArchive:
     def __get_date(self):
         return self.root_dir[4:]
 
-    def __get_parsed_file_stem(self):
+    def get_parsed_file_stem(self, parsed_dir, filter_sec):
         prefix = self.date
-        suffix = self.filter_sec
-        dirs = f"{self.in_dir}/{self.year}/{prefix}/{suffix}"
+        suffix = filter_sec
+        dirs = f"{parsed_dir}/{self.year}/{prefix}/{suffix}"
         os.makedirs(dirs, exist_ok=True)
         return f"{dirs}/{prefix}_{suffix}"
+
+    def get_filter_dir(self, filter_sec):
+        filter_dir = self.filter_dirs.get(filter_sec)
+        if not filter_dir:
+            raise ValueError("Wrong value of filter window. Must be 3600 or 7200")
+        return filter_dir
 
     def get_receiver_list(self):
         rec_paths = Path(self.archive_name, f'{self.root_dir}/')
@@ -63,9 +60,10 @@ class GnssArchive:
                     rec_lon.append(float(data[2]))
         return rec_names, rec_lon, rec_lat
 
-    def parse_gnss_archive(self, min_elm=30):
-        out_file_name = f"{self.file_stem}.txt"
-        rec_num_file = f"{self.file_stem}.num"
+    def parse_gnss_archive(self, parsed_dir, filter_sec, min_elm=30):
+        out_file_name = f"{self.get_parsed_file_stem(parsed_dir, filter_sec)}.txt"
+        rec_num_file = f"{self.get_parsed_file_stem(parsed_dir, filter_sec)}.num"
+        filter_dir = self.get_filter_dir(filter_sec)
         if not os.path.isfile(rec_num_file):
             with open(rec_num_file, mode='w') as num_file:
                 num_file.write('0')
@@ -81,7 +79,7 @@ class GnssArchive:
                 rec_num = rec_index + 1
                 print(f"{rec_num} of {rec_count}.")
                 for j in range(1, 33):
-                    at_file = f"{self.root_dir}/{rec_dir}/{self.filter_dir}/G{str(j).zfill(2)}.txt"
+                    at_file = f"{self.root_dir}/{rec_dir}/{filter_dir}/G{str(j).zfill(2)}.txt"
                     g_file = Path(self.archive_name, at_file)
                     if g_file.exists():
                         with g_file.open(mode='r') as txt:
@@ -98,15 +96,19 @@ class GnssArchive:
                     num_file.write(str(rec_index))
         print("Reading is completed.")
 
-    def read_gnss_data(self):
+
+class GnssData:
+    def __init__(self):
+        self.gnss_data = []
+
+    def read_gnss_data(self, file_stem):
         if not self.gnss_data:
-            in_file_name = f"{self.file_stem}.txt"
+            in_file_name = f"{file_stem}.txt"
             with open(in_file_name, mode='r') as in_file:
                 self.gnss_data = in_file.readlines()
 
 
 if __name__ == '__main__':
-    _, cmd_archive_name, cmd_in_dir, cmd_out_dir, cmd_filter_sec = argv
-    archive = GnssArchive(cmd_archive_name, cmd_in_dir,
-                          cmd_out_dir, int(cmd_filter_sec))
-    archive.parse_gnss_archive()
+    _, cmd_archive_name, cmd_parsed_dir, cmd_filter_sec = argv
+    archive = GnssArchive(cmd_archive_name)
+    archive.parse_gnss_archive(cmd_parsed_dir, int(cmd_filter_sec))
