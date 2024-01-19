@@ -72,7 +72,7 @@ class GeoAxesMap:
             norm = Normalize(-1, 1)
             cmap = colormaps['rainbow']
             self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.15,
-                                      orientation='vertical')
+                                      orientation='vertical', alpha=0)
         tight_layout(pad=2)
         return output_figure
 

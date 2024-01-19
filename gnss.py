@@ -99,13 +99,76 @@ class GnssArchive:
 
 class GnssData:
     def __init__(self):
-        self.gnss_data = []
+        self.add_dir = None
+        self.coord_values = {"lon": 0, "lon_span": 0, "lat": 0, "lat_span": 0}
+        self.time_values = {'time': 0, "time_span": 0}
+        self.data_title = ['hour', 'min', 'sec', 'dTEC', 'azm', 'elm', 'gdlat', 'gdlon']
+        self.data = []
+        self.time_dtec = []
+        self.lon_lat_dtec = []
 
-    def read_gnss_data(self, file_stem):
-        if not self.gnss_data:
-            in_file_name = f"{file_stem}.txt"
-            with open(in_file_name, mode='r') as in_file:
-                self.gnss_data = in_file.readlines()
+    @staticmethod
+    def get_str_value(value):
+        return str(value).replace('.', 'p')
+
+    def get_time_dtec_file_stem(self, out_dir):
+        dir_name = f"{out_dir}/{self.add_dir}/Coords/1"
+        os.makedirs(dir_name, exist_ok=True)
+        file_name = (f"{self.get_str_value(self.coord_values['lon'])}_"
+                     f"{self.get_str_value(self.coord_values['lon_span'])}lon_"
+                     f"{self.get_str_value(self.coord_values['lat'])}_"
+                     f"{self.get_str_value(self.coord_values['lat_span'])}lat")
+        return f"{dir_name}/{file_name}"
+
+    def get_lon_lat_dtec_file_stem(self, out_dir):
+        dir_name = f"{out_dir}/{self.add_dir}/Time/1"
+        os.makedirs(dir_name, exist_ok=True)
+        file_name = (f"{self.get_str_value(self.time_values['time'])}_"
+                     f"{self.get_str_value(self.time_values['time_span'])}")
+        return f"{dir_name}/{file_name}"
+
+    def read_gnss_data(self, file_name):
+        self.add_dir = '/'.join(file_name.split('/')[-4:-1])
+        if not self.data:
+            with open(file_name, mode='r') as in_file:
+                self.data = in_file.readlines()
+
+    def get_time_dtec(self, out_dir):
+        time_file_name = f"{self.get_time_dtec_file_stem(out_dir)}.txt"
+        if os.path.isfile(time_file_name):
+            with open(time_file_name, mode='r') as time_file:
+                self.time_dtec = [list(map(float, line.split())) for line in time_file]
+        else:
+            with open(time_file_name, mode='w') as time_file:
+                for line in self.data:
+                    data = list(map(float, line.split()))
+                    g_data = dict(zip(self.data_title, data))
+                    if all((g_data['gdlat'] >= self.coord_values['lat'] - self.coord_values['lat_span'] / 2,
+                            g_data['gdlat'] <= self.coord_values['lat'] - self.coord_values['lat_span'] / 2,
+                            g_data['gdlon'] >= self.coord_values['lon'] - self.coord_values['lon_span'] / 2,
+                            g_data['gdlon'] <= self.coord_values['lon'] - self.coord_values['lon_span'] / 2)):
+                        c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
+                        time_dtec_data = [c_time, g_data['dTEC']]
+                        self.time_dtec.append(time_dtec_data)
+                        time_file.write(f"{c_time}\t{g_data['dTEC']}\n")
+
+    def get_lon_lat_dtec(self, out_dir):
+        coord_file_name = f"{self.get_lon_lat_dtec_file_stem(out_dir)}.txt"
+        if os.path.isfile(coord_file_name):
+            with open(coord_file_name, mode='r') as coord_file:
+                self.lon_lat_dtec = [list(map(float, line.split())) for line in coord_file]
+        else:
+            with open(coord_file_name, mode='w') as coord_file:
+                for line in self.data:
+                    data = list(map(float, line.split()))
+                    g_data = dict(zip(self.data_title, data))
+                    c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
+                    time_cond = ((c_time >= self.time_values['time'] - self.time_values['time_span'] / 2) and
+                                 (c_time <= self.time_values['time'] + self.time_values['time_span'] / 2))
+                    if time_cond:
+                        lon_lat_dtec_data = [g_data['gdlon'], g_data['gdlat'], g_data['dTEC']]
+                        self.lon_lat_dtec.append(lon_lat_dtec_data)
+                        coord_file.write(f"{g_data['gdlon']}\t{g_data['gdlat']}\t{g_data['dTEC']}\n")
 
 
 if __name__ == '__main__':

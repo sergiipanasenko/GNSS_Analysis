@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog
 
-from gnss import GnssArchive
+from gnss import GnssArchive, GnssData
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS
 from ui.main_window import Ui_MainWindow
 import cartopy.crs as ccrs
@@ -11,6 +11,7 @@ from matplotlib.cm import ScalarMappable
 
 from math import ceil, cos, radians
 import time
+import os
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -27,14 +28,16 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
 
         # settings
-        time_x_lim = (0, 24)
-        time_y_lim = (-1, 1)
-        self.time_axes.set_xlim(time_x_lim)
-        self.time_axes.set_ylim(time_y_lim)
-        self.lineEdit_6.setText(str(time_x_lim[0]))
-        self.lineEdit_5.setText(str(time_x_lim[1]))
-        self.lineEdit_8.setText(str(time_y_lim[0]))
-        self.lineEdit_7.setText(str(time_y_lim[1]))
+        self.limit_space_dtec = {'min_dtec': -0.5, 'max_dtec': 0.5}
+        self.limit_time = {'min_time': 0, 'max_time': 24, 'min_dtec': -1, 'max_dtec': 1}
+        self.current_coords = {"lon": 33.370278, 'lon_span': 0.75, 'lat': 46.777778, 'lat_span': 0.75}
+        self.current_time = {'time': 12.0, 'time_span': 0.01}
+        self.time_axes.set_xlim((self.limit_time['min_time'], self.limit_time['max_time']))
+        self.time_axes.set_ylim((self.limit_time['min_dtec'], self.limit_time['max_dtec']))
+        self.lineEdit_6.setText(str(self.limit_time['min_time']))
+        self.lineEdit_5.setText(str(self.limit_time['max_time']))
+        self.lineEdit_8.setText(str(self.limit_time['min_dtec']))
+        self.lineEdit_7.setText(str(self.limit_time['max_dtec']))
 
         space_lim = self.space_widget.axes_map.coords
         self.lineEdit_4.setText(str(round(space_lim['min_lon'], 3)))
@@ -42,26 +45,36 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.lineEdit.setText(str(round(space_lim['min_lat'], 3)))
         self.lineEdit_2.setText(str(round(space_lim['max_lat'], 3)))
 
-        self.lineEdit_9.setText(str(0.01))
-        self.lineEdit_10.setText(str(12))
-        self.lineEdit_11.setText(str(0.75))
-        self.lineEdit_12.setText(str(46.777778))
-        self.lineEdit_14.setText(str(0.75))
-        self.lineEdit_13.setText(str(33.370278))
+        self.lineEdit_9.setText(str(self.current_time['time_span']))
+        self.lineEdit_10.setText(str(self.current_time['time']))
+        self.lineEdit_11.setText(str(self.current_coords['lat_span']))
+        self.lineEdit_12.setText(str(self.current_coords['lat']))
+        self.lineEdit_14.setText(str(self.current_coords['lon_span']))
+        self.lineEdit_13.setText(str(self.current_coords['lon']))
 
         self.gnss_archive = None
+        self.gnss_data = GnssData()
+        self.gnss_data.coord_values = self.current_coords
+        self.gnss_data.time_values = self.current_time
+
         self.filter_sec = 7200
         self.in_dir = 'results/in'
         self.out_dir = 'results/out'
         self.min_elm = 30
-        self.dtec_limits = [-0.5, 0.5]
-        self.gnss_data_title = ['hour', 'min', 'sec', 'dTEC', 'azm', 'elm', 'gdlat', 'gdlon']
 
         # connections
         self.pushButton.clicked.connect(self.update_coords)
         self.pushButton_2.clicked.connect(self.update_time_value)
-        self.pushButton_3.clicked.connect(self.parse_data)
+        self.pushButton_3.clicked.connect(self.update_figures)
         self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
+
+    def set_current_coords_time(self):
+        self.current_time['time'] = float(self.lineEdit_10.text())
+        self.current_time['time_span'] = float(self.lineEdit_9.text())
+        self.current_coords['lon'] = float(self.lineEdit_13.text())
+        self.current_coords['lon_span'] = float(self.lineEdit_14.text())
+        self.current_coords['lat'] = float(self.lineEdit_12.text())
+        self.current_coords['lat_span'] = float(self.lineEdit_11.text())
 
     def update_coords(self):
         min_lat = float(self.lineEdit.text())
@@ -118,128 +131,91 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             self.gnss_archive = GnssArchive(file_name[0])
             self.plot_receivers()
 
-    def save_timestamp_data(self, timestamp, timespan):
-        # self.gnss_archive.parse_gnss_archive(self.in_dir, self.filter_sec)
-        # self.gnss_archive.read_gnss_data()
-        cmap = self.space_color_bar.cmap
-        root_dir = self.gnss_archive.root_dir
-        day_num = self.gnss_archive.day_number
-        year = self.gnss_archive.year
-        save_time = str(timestamp).replace('.', 'p')
-        save_span = str(timespan).replace('.', 'p')
-        out_data_dir = f'{self.out_dir}/{year}/{day_num}/1/Time'
-        out_data_file = f'{out_data_dir}/{save_time}_{save_span}.txt'
-        out_fig_file = f'{out_data_dir}/Figures/{save_time}_{save_span}.png'
-        with (open(out_data_file, mode='w') as data_file):
-            for line in self.gnss_archive.gnss_data:
-                data = list(map(float, line.split()))
-                g_data = dict(zip(self.gnss_data_title, data))
-                c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
-                time_cond = (c_time >= timestamp - timespan / 2) and (c_time <= timestamp + timespan / 2)
-                if time_cond:
-                    out_str = f"{g_data['gdlon']}\t{g_data['gdlat']}\t{g_data['elm']}\t{g_data['dTEC']}\n"
-                    data_file.write(out_str)
+    def read_data(self):
+        if self.gnss_archive is None:
+            raise FileNotFoundError("GNSS archive is not opened.")
+        if not self.gnss_data.data:
+            file_name = f"{self.gnss_archive.get_parsed_file_stem(self.in_dir, self.filter_sec)}.txt"
+            if not os.path.isfile(file_name):
+                raise FileNotFoundError(f"Parsed file f'{file_name}' is not exist.")
+            self.gnss_data.read_gnss_data(file_name)
+
+    def plot_timestamp_data(self):
+        self.read_data()
+        self.gnss_data.get_lon_lat_dtec(self.out_dir)
         self.update_coords()
-        with (open(out_data_file, mode='r') as data_file):
-            data = [list(map(float, line.split())) for line in data_file]
-            min_lat = float(self.lineEdit.text())
-            max_lat = float(self.lineEdit_2.text())
-            min_lon = float(self.lineEdit_4.text())
-            max_lon = float(self.lineEdit_3.text())
-            lat_span = float(self.lineEdit_11.text())
-            lon_span = float(self.lineEdit_14.text())
-            n_lat = ceil((max_lat - min_lat) / lat_span)
-            plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
-            vmin, vmax = self.dtec_limits
-            norm = Normalize(vmin=vmin, vmax=vmax)
-            self.space_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
-            for lat in plot_lat:
-                lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2, data))
-                if lat_data:
-                    corr_lon_span = lon_span / cos(radians(lat))
-                    n_lon = ceil((max_lon - min_lon) / corr_lon_span)
-                    plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
-                    for lon in plot_lon:
-                        lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
-                        if lat_lon_data:
-                            lat_lon_dtec = list(zip(*lat_lon_data))[3]
-                            dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
-                            c = self.space_color_bar.cmap(norm(dtec_value))
-                            self.space_axes.add_patch(Rectangle(xy=(lon - corr_lon_span / 2, lat - lat_span / 2),
-                                                                width=corr_lon_span, height=lat_span,
-                                                                edgecolor='none',
-                                                                facecolor=c,
-                                                                transform=ccrs.PlateCarree()))
-
+        min_lat = float(self.lineEdit.text())
+        max_lat = float(self.lineEdit_2.text())
+        min_lon = float(self.lineEdit_4.text())
+        max_lon = float(self.lineEdit_3.text())
+        lat_span = float(self.lineEdit_11.text())
+        lon_span = float(self.lineEdit_14.text())
+        n_lat = ceil((max_lat - min_lat) / lat_span)
+        plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
+        cmap = self.space_color_bar.cmap
+        v_min = self.limit_space_dtec['min_dtec']
+        v_max = self.limit_space_dtec['max_dtec']
+        norm = Normalize(vmin=v_min, vmax=v_max)
+        self.space_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
+        for lat in plot_lat:
+            lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2,
+                                   self.gnss_data.lon_lat_dtec))
+            if lat_data:
+                corr_lon_span = lon_span / cos(radians(lat))
+                n_lon = ceil((max_lon - min_lon) / corr_lon_span)
+                plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
+                for lon in plot_lon:
+                    lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
+                    if lat_lon_data:
+                        lat_lon_dtec = list(zip(*lat_lon_data))[2]
+                        dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
+                        c = self.space_color_bar.cmap(norm(dtec_value))
+                        self.space_axes.add_patch(Rectangle(xy=(lon - corr_lon_span / 2, lat - lat_span / 2),
+                                                            width=corr_lon_span, height=lat_span,
+                                                            edgecolor='none',
+                                                            facecolor=c,
+                                                            transform=ccrs.PlateCarree()))
         current_date = self.gnss_archive.date
-        current_time = time.strftime("%H:%M:%S", time.gmtime(timestamp * 3600))
-        title = f"{current_date}    {current_time}"
-        current_lat = float(self.lineEdit_12.text())
-        current_lon = float(self.lineEdit_13.text())
-        self.space_axes.scatter(current_lon, current_lat, marker='d', s=40, color='black',
-                                transform=ccrs.PlateCarree())
-        self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
-                                 transform=ccrs.PlateCarree())
-        self.space_widget.canvas.figure.suptitle(title)
+        current_time = time.strftime("%H:%M:%S",
+                                     time.gmtime(self.gnss_data.time_values['time'] * 3600))
+        title = f"{current_date}    {current_time} UT"
+        # current_lat = float(self.lineEdit_12.text())
+        # current_lon = float(self.lineEdit_13.text())
+        # self.space_axes.scatter(current_lon, current_lat, marker='d', s=40, color='black',
+        #                         transform=ccrs.PlateCarree())
+        # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
+        #                          transform=ccrs.PlateCarree())
+        self.space_widget.canvas.figure.text(x=0.7, y=0.02, s=title)
         self.space_widget.canvas.draw()
-        self.space_widget.canvas.figure.savefig(dpi=200, fname=out_fig_file)
+        fig_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}.png"
+        if not os.path.isfile(fig_file_name):
+            self.space_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
-    def save_coords_stamp_data(self, coords_stamp, coords_span):
-        self.read_in_data()
-        root_dir = self.gnss_archive.split('/')[-1].split('.')[0]
-        day_num = root_dir[:3]
-        year = root_dir[4:8]
-        current_lon = coords_stamp['lon']
-        current_lat = coords_stamp['lat']
-        lon_span = coords_span['lon']
-        lat_span = coords_span['lat']
-        lon_str = str(current_lon).replace('.', 'p')
-        lat_str = str(current_lat).replace('.', 'p')
-        lon_span_str = str(lon_span).replace('.', 'p')
-        lat_span_str = str(lat_span).replace('.', 'p')
-        save_coords = f"{lon_str}_{lon_span_str}lon_{lat_str}_{lat_span_str}lat"
-        out_data_dir = f'{self.out_dir}/{year}/{day_num}/1/Coords'
-        out_data_file = f'{out_data_dir}/{save_coords}.txt'
-        with (open(out_data_file, mode='w') as data_file):
-            for line in self.gnss_data:
-                data = list(map(float, line.split()))
-                g_data = dict(zip(self.gnss_data_title, data))
-                if all((g_data['gdlat'] >= current_lat - lat_span / 2,
-                        g_data['gdlat'] <= current_lat + lat_span / 2,
-                        g_data['gdlon'] >= current_lon - lon_span / 2,
-                        g_data['gdlon'] <= current_lon + lon_span / 2)):
-                    c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
-                    out_str = f"{c_time}\t{g_data['dTEC']}\n"
-                    data_file.write(out_str)
-        with (open(out_data_file, mode='r') as data_file):
-            data = [list(map(float, line.split())) for line in data_file]
-            time_value = []
-            dtec_value = []
-            min_time = float(self.lineEdit_6.text())
-            max_time = float(self.lineEdit_5.text())
-            time_span = 1 / 120
-            n_time = ceil((max_time - min_time) / time_span)
-            plot_time = [min_time + j * time_span for j in range(n_time)]
-            for c_time in plot_time:
-                time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2, data))
-                if time_data:
-                    time_dtec = list(zip(*time_data))[1]
-                    dtec_value.append(sum(time_dtec) / len(time_dtec))
-                    time_value.append(c_time)
+    def plot_coords_stamp_data(self):
+        self.read_data()
+        self.gnss_data.get_time_dtec(self.out_dir)
+        time_value = []
+        dtec_value = []
+        min_time = float(self.lineEdit_6.text())
+        max_time = float(self.lineEdit_5.text())
+        time_span = 1 / 120
+        n_time = ceil((max_time - min_time) / time_span)
+        plot_time = [min_time + j * time_span for j in range(n_time)]
+        for c_time in plot_time:
+            time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2,
+                                    self.gnss_data.time_dtec))
+            if time_data:
+                time_dtec = list(zip(*time_data))[1]
+                dtec_value.append(sum(time_dtec) / len(time_dtec))
+                time_value.append(c_time)
         self.update_time_value()
+        self.time_axes.clear()
         self.time_axes.scatter(time_value, dtec_value, s=0.8, color='blue')
         self.time_widget.canvas.draw()
 
-    def parse_data(self):
+    def update_figures(self):
         if self.gnss_archive:
-            current_lat = float(self.lineEdit_12.text())
-            current_lon = float(self.lineEdit_13.text())
-            lat_span = float(self.lineEdit_11.text())
-            lon_span = float(self.lineEdit_14.text())
-            current_time = float(self.lineEdit_10.text())
-            time_span = float(self.lineEdit_9.text())
-            self.save_timestamp_data(current_time, time_span)
-            coords_stamp = {'lon': current_lon, 'lat': current_lat}
-            coords_span = {'lon': lon_span, 'lat': lat_span}
-            self.save_coords_stamp_data(coords_stamp, coords_span)
-            print("Parsing is completed.")
+            self.set_current_coords_time()
+            self.plot_timestamp_data()
+            self.plot_coords_stamp_data()
+            print("Figure updating is completed.")
