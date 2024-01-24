@@ -28,8 +28,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
 
         # settings
-        self.limit_space_dtec = {'min_dtec': -0.5, 'max_dtec': 0.5}
-        self.limit_time = {'min_time': 0, 'max_time': 24, 'min_dtec': -1, 'max_dtec': 1}
+        self.limit_space_dtec = {'min_dtec': -0.25, 'max_dtec': 0.25}
+        self.limit_time = {'min_time': 0.0, 'max_time': 24.0, 'min_dtec': -1.0, 'max_dtec': 1.0}
         self.current_coords = {"lon": 33.370278, 'lon_span': 0.75, 'lat': 46.777778, 'lat_span': 0.75}
         self.current_time = {'time': 12.0, 'time_span': 0.01}
         self.time_axes.set_xlim((self.limit_time['min_time'], self.limit_time['max_time']))
@@ -107,12 +107,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.plot_receivers()
 
     def update_time_value(self):
-        min_time = float(self.lineEdit_6.text())
-        max_time = float(self.lineEdit_5.text())
-        min_value = float(self.lineEdit_8.text())
-        max_value = float(self.lineEdit_7.text())
-        self.time_axes.set_xlim(min_time, max_time)
-        self.time_axes.set_ylim(min_value, max_value)
+        self.limit_time['min_time'] = float(self.lineEdit_6.text())
+        self.limit_time['max_time'] = float(self.lineEdit_5.text())
+        self.limit_time['min_dtec'] = float(self.lineEdit_8.text())
+        self.limit_time['max_dtec'] = float(self.lineEdit_7.text())
+        self.time_axes.set_xlim(self.limit_time['min_time'], self.limit_time['max_time'])
+        self.time_axes.set_ylim(self.limit_time['min_dtec'], self.limit_time['max_dtec'])
         self.time_widget.canvas.draw()
 
     def plot_receivers(self):
@@ -179,10 +179,10 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         current_time = time.strftime("%H:%M:%S",
                                      time.gmtime(self.gnss_data.time_values['time'] * 3600))
         title = f"{current_date}    {current_time} UT"
-        # current_lat = float(self.lineEdit_12.text())
-        # current_lon = float(self.lineEdit_13.text())
-        # self.space_axes.scatter(current_lon, current_lat, marker='d', s=40, color='black',
-        #                         transform=ccrs.PlateCarree())
+        current_lat = float(self.lineEdit_12.text())
+        current_lon = float(self.lineEdit_13.text())
+        self.space_axes.scatter(current_lon, current_lat, marker='o', s=40, color='red',
+                                transform=ccrs.PlateCarree())
         # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
         #                          transform=ccrs.PlateCarree())
         self.space_widget.canvas.figure.text(x=0.7, y=0.02, s=title)
@@ -208,10 +208,13 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                 time_dtec = list(zip(*time_data))[1]
                 dtec_value.append(sum(time_dtec) / len(time_dtec))
                 time_value.append(c_time)
-        self.update_time_value()
         self.time_axes.clear()
         self.time_axes.scatter(time_value, dtec_value, s=0.8, color='blue')
+        self.update_time_value()
         self.time_widget.canvas.draw()
+        fig_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}.png"
+        if not os.path.isfile(fig_file_name):
+            self.time_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
     def update_figures(self):
         if self.gnss_archive:

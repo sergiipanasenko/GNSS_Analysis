@@ -139,14 +139,15 @@ class GnssData:
             with open(time_file_name, mode='r') as time_file:
                 self.time_dtec = [list(map(float, line.split())) for line in time_file]
         else:
+            self.time_dtec = []
             with open(time_file_name, mode='w') as time_file:
                 for line in self.data:
                     data = list(map(float, line.split()))
                     g_data = dict(zip(self.data_title, data))
                     if all((g_data['gdlat'] >= self.coord_values['lat'] - self.coord_values['lat_span'] / 2,
-                            g_data['gdlat'] <= self.coord_values['lat'] - self.coord_values['lat_span'] / 2,
+                            g_data['gdlat'] <= self.coord_values['lat'] + self.coord_values['lat_span'] / 2,
                             g_data['gdlon'] >= self.coord_values['lon'] - self.coord_values['lon_span'] / 2,
-                            g_data['gdlon'] <= self.coord_values['lon'] - self.coord_values['lon_span'] / 2)):
+                            g_data['gdlon'] <= self.coord_values['lon'] + self.coord_values['lon_span'] / 2)):
                         c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
                         time_dtec_data = [c_time, g_data['dTEC']]
                         self.time_dtec.append(time_dtec_data)
@@ -158,6 +159,7 @@ class GnssData:
             with open(coord_file_name, mode='r') as coord_file:
                 self.lon_lat_dtec = [list(map(float, line.split())) for line in coord_file]
         else:
+            self.lon_lat_dtec = []
             with open(coord_file_name, mode='w') as coord_file:
                 for line in self.data:
                     data = list(map(float, line.split()))

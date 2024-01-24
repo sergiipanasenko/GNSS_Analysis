@@ -70,7 +70,7 @@ class GeoAxesMap:
                       crs=ccrs.PlateCarree())
         if self.is_cbar:
             norm = Normalize(-1, 1)
-            cmap = colormaps['rainbow']
+            cmap = colormaps['viridis']
             self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.15,
                                       orientation='vertical', alpha=0)
         tight_layout(pad=2)
