@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMainWindow, QFileDialog
+from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDesktopWidget
 
 from gnss import GnssArchive, GnssData
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS
@@ -26,6 +27,15 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.space_cbar_axes = self.space_widget.canvas.figure.axes[1]
         self.space_color_bar = self.space_widget.axes_map.color_bar
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
+
+        # centering
+        qt_rect = self.frameGeometry()
+        center_point = (QGuiApplication.primaryScreen().
+                        availableGeometry().center())
+        y_coord = center_point.y()
+        center_point.setY(y_coord - 15)
+        qt_rect.moveCenter(center_point)
+        self.move(qt_rect.topLeft())
 
         # settings
         self.limit_space_dtec = {'min_dtec': -0.25, 'max_dtec': 0.25}
