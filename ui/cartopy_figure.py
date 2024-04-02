@@ -13,6 +13,14 @@ UA_COORDS = {'min_lat': 44, 'max_lat': 52.5,
 EU_COORDS = {'min_lat': 36, 'max_lat': 71,
              'min_lon': -10, 'max_lon': 30,
              'central_long': 10, 'central_lat': 53.5}
+US_COORDS = {'min_lat': 23, 'max_lat': 55,
+             'min_lon': -126, 'max_lon': -66,
+             'central_long': -96, 'central_lat': 39}
+
+SA_COORDS = {'min_lat': -35, 'max_lat': -20,
+             'min_lon': 15, 'max_lon': 35,
+             'central_long': 25, 'central_lat': -27.5}
+
 
 DEFAULT_SHP_PARAMS = {'face_color': 'none', 'edge_color': 'gray',
                       'border_width': 0.3, 'coast_width': 0.3}
@@ -70,7 +78,8 @@ class GeoAxesMap:
                       crs=ccrs.PlateCarree())
         if self.is_cbar:
             norm = Normalize(-1, 1)
-            cmap = colormaps['viridis']
+            # cmap = colormaps['viridis']
+            cmap = colormaps['rainbow']
             self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.15,
                                       orientation='vertical', alpha=0)
         tight_layout(pad=2)
