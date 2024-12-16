@@ -34,7 +34,7 @@ class GeoAxesMap:
     def __init__(self, shp_file_name=None, coords=None,
                  shp_params=None, grid_params=None,
                  label_params=None, is_cbar=False):
-        self.coords = EU_COORDS.copy() if coords is None else coords.copy()
+        self.coords = US_COORDS.copy() if coords is None else coords.copy()
         self.shp_params = DEFAULT_SHP_PARAMS.copy() if shp_params is None \
             else shp_params.copy()
         self.grid_params = DEFAULT_GRID_PARAMS.copy() if grid_params is None \

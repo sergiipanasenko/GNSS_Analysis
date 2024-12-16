@@ -68,8 +68,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.gnss_data.time_values = self.current_time
 
         self.filter_sec = 7200
-        self.in_dir = 'results/in/EU'
-        self.out_dir = 'results/out/EU'
+        self.in_dir = 'results/in/US'
+        self.out_dir = 'results/out/US'
         self.min_elm = 30
 
         # connections
