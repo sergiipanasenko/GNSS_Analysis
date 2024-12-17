@@ -81,7 +81,7 @@ class GeoAxesMap:
             # cmap = colormaps['viridis']
             cmap = colormaps['rainbow']
             self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.15,
-                                      orientation='vertical', alpha=0)
+                                      orientation='vertical', alpha=0, ax=ax)
         tight_layout(pad=2)
         return output_figure
 
