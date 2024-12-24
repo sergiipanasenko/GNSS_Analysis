@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 
-DEFAULT_TICK_PARAMS = {'font_size': 24, 'font_weight': 'normal',
+DEFAULT_TICK_PARAMS = {'font_size': 18, 'font_weight': 'normal',
                        'family': 'Times New Roman', 'direction': 'in'}
 
-DEFAULT_FIGURE_PARAMS = {'pad': 2}
+DEFAULT_FIGURE_PARAMS = {'pad': 3}
 
 
 class AxesMap:
@@ -15,14 +15,14 @@ class AxesMap:
 
     def create_figure(self):
         output_figure = plt.figure()
-        plt.axes()
-        plt.xticks(fontsize=self.tick_params['font_size'],
-                   fontweight=self.tick_params['font_weight'],
-                   family=self.tick_params['family'])
-        plt.yticks(fontsize=self.tick_params['font_size'],
-                   fontweight=self.tick_params['font_weight'],
-                   family=self.tick_params['family'])
-        plt.tick_params(direction=self.tick_params['direction'])
+        ax = plt.axes()
+        ax.tick_params(labelsize=self.tick_params['font_size'],
+                       labelfontfamily=self.tick_params['family'],
+                       direction=self.tick_params['direction'], pad=3)
+        ax.set_ylabel(ylabel='dTEC (TECU)', fontsize=self.tick_params['font_size'],
+                      family= self.tick_params['family'])
+        ax.set_xlabel(xlabel='UT', fontsize=self.tick_params['font_size'], loc='right',
+                      family=self.tick_params['family'], labelpad=-17.5)
         plt.tight_layout(pad=self.figure_params['pad'])
         return output_figure
 

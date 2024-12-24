@@ -2,7 +2,7 @@ from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDesktopWidget
 
 from gnss import GnssArchive, GnssData
-from ui.cartopy_figure import GeoAxesMap, DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS
+from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS
 from ui.main_window import Ui_MainWindow
 import cartopy.crs as ccrs
 
@@ -33,12 +33,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         center_point = (QGuiApplication.primaryScreen().
                         availableGeometry().center())
         y_coord = center_point.y()
-        center_point.setY(y_coord - 15)
+        center_point.setY(y_coord - 100)
         qt_rect.moveCenter(center_point)
         self.move(qt_rect.topLeft())
 
         # settings
-        self.limit_space_dtec = {'min_dtec': -0.75, 'max_dtec': 0.75}
+        self.limit_space_dtec = {'min_dtec': -0.5, 'max_dtec': 0.5}
         self.limit_time = {'min_time': 0.0, 'max_time': 24.0, 'min_dtec': -1.0, 'max_dtec': 1.0}
         self.current_coords = {"lon": 33.370278, 'lon_span': 0.75, 'lat': 46.777778, 'lat_span': 0.75}
         self.current_time = {'time': 12.0, 'time_span': 0.01}
@@ -67,7 +67,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.gnss_data.coord_values = self.current_coords
         self.gnss_data.time_values = self.current_time
 
-        self.filter_sec = 3600
+        self.filter_sec = 7200
         self.in_dir = 'results/in/EU'
         self.out_dir = 'results/out/EU'
         self.min_elm = 30
@@ -102,7 +102,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.space_color_bar = self.space_widget.axes_map.color_bar
         self.space_widget.canvas.figure.set_size_inches(s_width, s_height)
         self.space_widget.canvas.draw()
-        r_label_params = DEFAULT_LABEL_PARAMS | {'frame_on': False}
+        r_label_params = DEFAULT_MAP_PARAMS | {'frame_on': False}
         r_grid_params = DEFAULT_GRID_PARAMS | {'draw_labels': False}
         self.receiver_widget.axes_map = GeoAxesMap(coords=coords,
                                                    label_params=r_label_params,
@@ -198,7 +198,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         #                         transform=ccrs.PlateCarree())
         # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
         #                          transform=ccrs.PlateCarree())
-        self.space_widget.canvas.figure.text(x=0.7, y=0.02, s=title)
+        self.space_widget.canvas.figure.text(x=0.6, y=0.02, s=title,
+                                             family='Times New Roman', size=16)
         self.space_widget.canvas.draw()
         fig_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}.png"
         if not os.path.isfile(fig_file_name):

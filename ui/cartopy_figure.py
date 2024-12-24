@@ -21,26 +21,31 @@ SA_COORDS = {'min_lat': -35, 'max_lat': -20,
              'min_lon': 15, 'max_lon': 35,
              'central_long': 25, 'central_lat': -27.5}
 
-
 DEFAULT_SHP_PARAMS = {'face_color': 'none', 'edge_color': 'gray',
                       'border_width': 0.3, 'coast_width': 0.3}
 DEFAULT_GRID_PARAMS = {'grid_width': 0.2, 'draw_labels': True}
-DEFAULT_LABEL_PARAMS = {'size': 14, 'color': 'black',
-                        'family': 'Times New Roman',
-                        'frame_on': True}
+DEFAULT_MAP_PARAMS = {'size': 18, 'color': 'black',
+                      'family': 'Times New Roman',
+                      'frame_on': True}
+DEFAULT_CBAR_PARAMS = {'size': 16, 'color': 'black',
+                       'family': 'Times New Roman',
+                       'title_pad': 18.0, 'title': 'dTEC (TECU)'}
 
 
 class GeoAxesMap:
     def __init__(self, shp_file_name=None, coords=None,
                  shp_params=None, grid_params=None,
-                 label_params=None, is_cbar=False):
+                 label_params=None, is_cbar=False,
+                 cbar_params=None):
         self.coords = EU_COORDS.copy() if coords is None else coords.copy()
         self.shp_params = DEFAULT_SHP_PARAMS.copy() if shp_params is None \
             else shp_params.copy()
         self.grid_params = DEFAULT_GRID_PARAMS.copy() if grid_params is None \
             else grid_params.copy()
-        self.label_params = DEFAULT_LABEL_PARAMS.copy() if label_params is None \
+        self.label_params = DEFAULT_MAP_PARAMS.copy() if label_params is None \
             else label_params.copy()
+        self.cbar_params = DEFAULT_CBAR_PARAMS.copy() if cbar_params is None \
+            else cbar_params.copy()
         self.shp_file_name = shp_file_name
         self.is_cbar = is_cbar
         self.color_bar = None
@@ -80,9 +85,17 @@ class GeoAxesMap:
             norm = Normalize(-1, 1)
             # cmap = colormaps['viridis']
             cmap = colormaps['rainbow']
-            self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.15,
+            self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.2,
                                       orientation='vertical', alpha=0, ax=ax, shrink=0.95,
                                       fraction=0.05, aspect=30, ticks=[-1, -0.5, 0, 0.5, 1])
+            self.color_bar.ax.tick_params(labelsize=self.cbar_params['size'],
+                                          labelfontfamily=self.cbar_params['family'],
+                                          labelcolor=self.cbar_params['color'])
+            self.color_bar.ax.set_title(label=self.cbar_params['title'],
+                                        pad=self.cbar_params['title_pad'],
+                                        family=self.cbar_params['family'],
+                                        fontsize=self.cbar_params['size'],
+                                        color=self.cbar_params['color'])
         tight_layout(pad=2)
         return output_figure
 
