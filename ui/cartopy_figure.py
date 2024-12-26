@@ -3,7 +3,7 @@ from cartopy.io.shapereader import Reader
 import cartopy.feature as c_feature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
-from matplotlib.pyplot import axes, figure, show, tight_layout, colorbar, Normalize
+import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib import colormaps
 
@@ -49,14 +49,17 @@ class GeoAxesMap:
         self.shp_file_name = shp_file_name
         self.is_cbar = is_cbar
         self.color_bar = None
+        self.figure = None
+        self.polygons = []
 
     def create_figure(self):
         current_crs = ccrs.LambertAzimuthalEqualArea(
             central_longitude=self.coords['central_long'],
             central_latitude=self.coords['central_lat']
         )
-        output_figure = figure()
-        ax = axes(projection=current_crs, frame_on=self.label_params['frame_on'])
+        self.figure = plt.figure()
+        ax = plt.axes(projection=current_crs, frame_on=self.label_params['frame_on'])
+        self.figure.add_axes(ax)
         if self.shp_file_name is not None:
             shape_feature = c_feature.ShapelyFeature(
                 Reader(self.shp_file_name).geometries(),
@@ -82,12 +85,12 @@ class GeoAxesMap:
                        self.coords['min_lat'], self.coords['max_lat']],
                       crs=ccrs.PlateCarree())
         if self.is_cbar:
-            norm = Normalize(-1, 1)
+            norm = plt.Normalize(-1, 1)
             # cmap = colormaps['viridis']
             cmap = colormaps['rainbow']
-            self.color_bar = colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.2,
-                                      orientation='vertical', alpha=0, ax=ax, shrink=0.95,
-                                      fraction=0.05, aspect=30, ticks=[-1, -0.5, 0, 0.5, 1])
+            self.color_bar = plt.colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.2,
+                                          orientation='vertical', alpha=0, ax=ax, shrink=0.95,
+                                          fraction=0.05, aspect=30, ticks=[-1, -0.5, 0, 0.5, 1])
             self.color_bar.ax.tick_params(labelsize=self.cbar_params['size'],
                                           labelfontfamily=self.cbar_params['family'],
                                           labelcolor=self.cbar_params['color'])
@@ -96,10 +99,11 @@ class GeoAxesMap:
                                         family=self.cbar_params['family'],
                                         fontsize=self.cbar_params['size'],
                                         color=self.cbar_params['color'])
-        tight_layout(pad=2)
-        return output_figure
+        plt.tight_layout(pad=2)
 
 
 if __name__ == '__main__':
-    fig = GeoAxesMap(shp_file_name='geo/cntry02.shp').create_figure()
-    show()
+    g = GeoAxesMap(shp_file_name='geo/cntry02.shp')
+    g.create_figure()
+    plt.show()
+

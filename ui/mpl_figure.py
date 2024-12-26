@@ -12,21 +12,25 @@ class AxesMap:
             else tick_params.copy()
         self.figure_params = DEFAULT_FIGURE_PARAMS.copy() if figure_params is None \
             else figure_params.copy()
+        self.graphs = []
+        self.figure = None
 
     def create_figure(self):
-        output_figure = plt.figure()
+        self.figure = plt.figure()
         ax = plt.axes()
+        self.figure.add_axes(ax)
         ax.tick_params(labelsize=self.tick_params['font_size'],
                        labelfontfamily=self.tick_params['family'],
                        direction=self.tick_params['direction'], pad=3)
         ax.set_ylabel(ylabel='dTEC (TECU)', fontsize=self.tick_params['font_size'],
-                      family= self.tick_params['family'])
-        ax.set_xlabel(xlabel='UT', fontsize=self.tick_params['font_size'], loc='right',
-                      family=self.tick_params['family'], labelpad=-17.5)
+                      family=self.tick_params['family'])
+        ax.set_xlabel(xlabel='UT', fontsize=self.tick_params['font_size'],
+                      family=self.tick_params['family'])
+        ax.xaxis.set_label_coords(0.97, -0.036)
         plt.tight_layout(pad=self.figure_params['pad'])
-        return output_figure
 
 
 if __name__ == '__main__':
-    fig = AxesMap().create_figure()
+    g = AxesMap()
+    g.create_figure()
     plt.show()

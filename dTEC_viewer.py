@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QGuiApplication
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDesktopWidget
+from PyQt5.QtWidgets import QMainWindow, QFileDialog
 
 from gnss import GnssArchive, GnssData
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS
@@ -10,7 +10,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 
-from math import ceil, cos, radians
+import math
 import time
 import os
 
@@ -98,7 +98,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.space_widget.axes_map.coords = coords
         s_width, s_height = self.space_widget.canvas.figure.get_size_inches()
         self.space_widget.axes_map = GeoAxesMap(coords=coords, is_cbar=True)
-        self.space_widget.canvas.figure = self.space_widget.axes_map.create_figure()
+        self.space_widget.axes_map.create_figure()
+        self.space_widget.canvas.figure = self.space_widget.axes_map.figure
         self.space_color_bar = self.space_widget.axes_map.color_bar
         self.space_widget.canvas.figure.set_size_inches(s_width, s_height)
         self.space_widget.canvas.draw()
@@ -107,8 +108,9 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.receiver_widget.axes_map = GeoAxesMap(coords=coords,
                                                    label_params=r_label_params,
                                                    grid_params=r_grid_params)
+        self.receiver_widget.axes_map.create_figure()
         r_width, r_height = self.receiver_widget.canvas.figure.get_size_inches()
-        self.receiver_widget.canvas.figure = self.receiver_widget.axes_map.create_figure()
+        self.receiver_widget.canvas.figure = self.receiver_widget.axes_map.figure
         self.receiver_widget.canvas.figure.set_size_inches(r_width, r_height)
         self.receiver_widget.canvas.draw()
         self.space_axes = self.space_widget.canvas.figure.axes[0]
@@ -123,20 +125,24 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.limit_time['max_dtec'] = float(self.lineEdit_7.text())
         self.time_axes.set_xlim(self.limit_time['min_time'], self.limit_time['max_time'])
         self.time_axes.set_ylim(self.limit_time['min_dtec'], self.limit_time['max_dtec'])
+        x_labs = self.time_axes.get_xticklabels()
+        x_labs[-1] = ''
+        self.time_axes.set_xticklabels(x_labs)
         self.time_widget.canvas.draw()
 
     def plot_receivers(self):
-        _, rec_lon, rec_lat = self.gnss_archive.get_receiver_coords()
-        self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=10, marker='o',
-                                   transform=ccrs.PlateCarree())
-        self.receiver_widget.canvas.draw()
+        if self.gnss_archive:
+            _, rec_lon, rec_lat = self.gnss_archive.get_receiver_coords()
+            self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=10, marker='o',
+                                       transform=ccrs.PlateCarree())
+            self.receiver_widget.canvas.draw()
 
     def choose_gnss_data_archive(self):
         file_name = QFileDialog.getOpenFileName(
             caption="Open GNSS data archive",
             filter="Archive files (*.zip)",
             initialFilter="Archive files (*.zip)",
-            directory='d:/GNSS/')
+            directory='C:/Users/Sergii/Dell_D/GNSS')
         if file_name[0]:
             self.gnss_archive = GnssArchive(file_name[0])
             self.plot_receivers()
@@ -160,7 +166,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         max_lon = float(self.lineEdit_3.text())
         lat_span = float(self.lineEdit_11.text())
         lon_span = float(self.lineEdit_14.text())
-        n_lat = ceil((max_lat - min_lat) / lat_span)
+        n_lat = math.ceil((max_lat - min_lat) / lat_span)
         plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
         cmap = self.space_color_bar.cmap
         v_min = self.limit_space_dtec['min_dtec']
@@ -171,10 +177,10 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         with open(res_file_name, mode='w') as res_file:
             for lat in plot_lat:
                 lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2,
-                                    self.gnss_data.lon_lat_dtec))
+                                       self.gnss_data.lon_lat_dtec))
                 if lat_data:
-                    corr_lon_span = lon_span / cos(radians(lat))
-                    n_lon = ceil((max_lon - min_lon) / corr_lon_span)
+                    corr_lon_span = lon_span / math.cos(math.radians(lat))
+                    n_lon = math.ceil((max_lon - min_lon) / corr_lon_span)
                     plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
                     for lon in plot_lon:
                         lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
@@ -184,16 +190,16 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                             res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
                             c = self.space_color_bar.cmap(norm(dtec_value))
                             self.space_axes.add_patch(Rectangle(xy=(lon - corr_lon_span / 2, lat - lat_span / 2),
-                                                            width=corr_lon_span, height=lat_span,
-                                                            edgecolor='none',
-                                                            facecolor=c,
-                                                            transform=ccrs.PlateCarree()))
+                                                                width=corr_lon_span, height=lat_span,
+                                                                edgecolor='none',
+                                                                facecolor=c,
+                                                                transform=ccrs.PlateCarree()))
         current_date = self.gnss_archive.date
         current_time = time.strftime("%H:%M:%S",
                                      time.gmtime(self.gnss_data.time_values['time'] * 3600))
         title = f"{current_date}    {current_time} UT"
-        current_lat = float(self.lineEdit_12.text())
-        current_lon = float(self.lineEdit_13.text())
+        # current_lat = float(self.lineEdit_12.text())
+        # current_lon = float(self.lineEdit_13.text())
         # self.space_axes.scatter(current_lon, current_lat, marker='o', s=30, color='black',
         #                         transform=ccrs.PlateCarree())
         # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
@@ -214,7 +220,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         min_time = self.limit_time['min_time']
         max_time = self.limit_time['max_time']
         time_span = 1 / 120
-        n_time = ceil((max_time - min_time) / time_span)
+        n_time = math.ceil((max_time - min_time) / time_span)
         plot_time = [min_time + j * time_span for j in range(n_time)]
         res_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}_av.txt"
         for c_time in plot_time:
@@ -229,9 +235,13 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             for line in list(zip(time_value, dtec_value)):
                 res_file.write(f"{line[0]}\t{line[1]}\n")
 
-        self.time_axes.clear()
-        self.time_axes.scatter(time_value, dtec_value, s=0.8, color='blue')
-        self.update_time_value()
+        for graph in self.time_widget.axes_map.graphs:
+            graph.remove()
+            self.time_widget.axes_map.graphs.remove(graph)
+        # self.time_axes.clear()
+        graph = self.time_axes.scatter(time_value, dtec_value, s=0.8, color='blue')
+        self.time_widget.axes_map.graphs.append(graph)
+        # self.update_time_value()
         self.time_widget.canvas.draw()
         fig_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}.png"
 
