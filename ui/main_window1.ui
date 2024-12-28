@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1000</width>
-    <height>786</height>
+    <width>1163</width>
+    <height>849</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,16 +17,6 @@
    <layout class="QGridLayout" name="gridLayout">
     <item row="1" column="1">
      <widget class="QWidget" name="time_widget" native="true"/>
-    </item>
-    <item row="0" column="1">
-     <widget class="QWidget" name="space_widget" native="true">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-     </widget>
     </item>
     <item row="1" column="0">
      <widget class="QWidget" name="receiver_widget" native="true">
@@ -71,7 +61,7 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
-          <widget class="QTabWidget" name="tabWidget">
+          <widget class="QTabWidget" name="tabWidget_set">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
              <horstretch>0</horstretch>
@@ -97,7 +87,7 @@
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_3">
              <item>
-              <widget class="QLabel" name="label_9">
+              <widget class="QLabel" name="label_projection">
                <property name="text">
                 <string>Projection</string>
                </property>
@@ -107,12 +97,12 @@
               </widget>
              </item>
              <item>
-              <widget class="QComboBox" name="comboBox_2"/>
+              <widget class="QComboBox" name="combo_projection"/>
              </item>
              <item>
-              <widget class="QLabel" name="label">
+              <widget class="QLabel" name="label_region">
                <property name="text">
-                <string>Select regioon</string>
+                <string>Select region</string>
                </property>
                <property name="alignment">
                 <set>Qt::AlignCenter</set>
@@ -120,7 +110,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QComboBox" name="comboBox">
+              <widget class="QComboBox" name="combo_region">
                <property name="autoFillBackground">
                 <bool>true</bool>
                </property>
@@ -157,7 +147,7 @@
              <item>
               <layout class="QGridLayout" name="gridLayout_2">
                <item row="3" column="1">
-                <widget class="QSpinBox" name="spinBox_3">
+                <widget class="QSpinBox" name="spin_maxlat_degs">
                  <property name="minimum">
                   <number>-90</number>
                  </property>
@@ -167,56 +157,56 @@
                 </widget>
                </item>
                <item row="4" column="2">
-                <widget class="QSpinBox" name="spinBox_8">
+                <widget class="QSpinBox" name="spin_maxlon_mins">
                  <property name="maximum">
                   <number>59</number>
                  </property>
                 </widget>
                </item>
                <item row="0" column="1">
-                <widget class="QLabel" name="label_7">
+                <widget class="QLabel" name="label_space_degs">
                  <property name="text">
-                  <string>Deg.</string>
+                  <string>Degs</string>
                  </property>
                 </widget>
                </item>
                <item row="0" column="2">
-                <widget class="QLabel" name="label_8">
+                <widget class="QLabel" name="label_space_mins">
                  <property name="text">
-                  <string>Min.</string>
+                  <string>Mins</string>
                  </property>
                 </widget>
                </item>
                <item row="4" column="0">
-                <widget class="QLabel" name="label_6">
+                <widget class="QLabel" name="label_maxlon">
                  <property name="text">
                   <string>Max. lon.</string>
                  </property>
                 </widget>
                </item>
                <item row="2" column="0">
-                <widget class="QLabel" name="label_4">
+                <widget class="QLabel" name="label_minlon">
                  <property name="text">
                   <string>Min. lon.</string>
                  </property>
                 </widget>
                </item>
                <item row="5" column="0">
-                <widget class="QLabel" name="label_2">
+                <widget class="QLabel" name="label_centrlat">
                  <property name="text">
                   <string>Centr. lat.</string>
                  </property>
                 </widget>
                </item>
                <item row="1" column="2">
-                <widget class="QSpinBox" name="spinBox_5">
+                <widget class="QSpinBox" name="spin_minlat_mins">
                  <property name="maximum">
                   <number>59</number>
                  </property>
                 </widget>
                </item>
                <item row="1" column="1">
-                <widget class="QSpinBox" name="spinBox">
+                <widget class="QSpinBox" name="spin_minlat_degs">
                  <property name="minimum">
                   <number>-90</number>
                  </property>
@@ -226,7 +216,7 @@
                 </widget>
                </item>
                <item row="4" column="1">
-                <widget class="QSpinBox" name="spinBox_4">
+                <widget class="QSpinBox" name="spin_maxlon_degs">
                  <property name="minimum">
                   <number>-180</number>
                  </property>
@@ -236,35 +226,35 @@
                 </widget>
                </item>
                <item row="2" column="2">
-                <widget class="QSpinBox" name="spinBox_6">
+                <widget class="QSpinBox" name="spin_minlon_mins">
                  <property name="maximum">
                   <number>59</number>
                  </property>
                 </widget>
                </item>
                <item row="1" column="0">
-                <widget class="QLabel" name="label_3">
+                <widget class="QLabel" name="label_minlat">
                  <property name="text">
                   <string>Min. lat.</string>
                  </property>
                 </widget>
                </item>
                <item row="3" column="2">
-                <widget class="QSpinBox" name="spinBox_7">
+                <widget class="QSpinBox" name="spin_maxlat_mins">
                  <property name="maximum">
                   <number>59</number>
                  </property>
                 </widget>
                </item>
                <item row="3" column="0">
-                <widget class="QLabel" name="label_5">
+                <widget class="QLabel" name="label_maxlat">
                  <property name="text">
                   <string>Max. lat.</string>
                  </property>
                 </widget>
                </item>
                <item row="2" column="1">
-                <widget class="QSpinBox" name="spinBox_2">
+                <widget class="QSpinBox" name="spin_minlon_degs">
                  <property name="minimum">
                   <number>-180</number>
                  </property>
@@ -274,14 +264,14 @@
                 </widget>
                </item>
                <item row="6" column="0">
-                <widget class="QLabel" name="label_10">
+                <widget class="QLabel" name="label_centrlon">
                  <property name="text">
                   <string>Centr. lon.</string>
                  </property>
                 </widget>
                </item>
                <item row="5" column="1">
-                <widget class="QSpinBox" name="spinBox_9">
+                <widget class="QSpinBox" name="spin_centrlat_degs">
                  <property name="minimum">
                   <number>-90</number>
                  </property>
@@ -291,7 +281,7 @@
                 </widget>
                </item>
                <item row="6" column="1">
-                <widget class="QSpinBox" name="spinBox_10">
+                <widget class="QSpinBox" name="spin_centrlon_degs">
                  <property name="minimum">
                   <number>-180</number>
                  </property>
@@ -301,20 +291,33 @@
                 </widget>
                </item>
                <item row="5" column="2">
-                <widget class="QSpinBox" name="spinBox_11">
+                <widget class="QSpinBox" name="spin_centrlat_mins">
                  <property name="maximum">
                   <number>59</number>
                  </property>
                 </widget>
                </item>
                <item row="6" column="2">
-                <widget class="QSpinBox" name="spinBox_12">
+                <widget class="QSpinBox" name="spin_centrlon_mins">
                  <property name="maximum">
                   <number>59</number>
                  </property>
                 </widget>
                </item>
               </layout>
+             </item>
+             <item>
+              <spacer name="verticalSpacer_6">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
              </item>
             </layout>
            </widget>
@@ -326,7 +329,7 @@
              <item>
               <layout class="QVBoxLayout" name="verticalLayout_4">
                <item>
-                <widget class="QLabel" name="label_11">
+                <widget class="QLabel" name="label_xaxis">
                  <property name="text">
                   <string>X Axis</string>
                  </property>
@@ -338,7 +341,7 @@
                <item>
                 <layout class="QGridLayout" name="gridLayout_3">
                  <item row="0" column="1">
-                  <widget class="QDateTimeEdit" name="dateTimeEdit">
+                  <widget class="QDateTimeEdit" name="dt_xaxis_min">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -360,7 +363,7 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QDateTimeEdit" name="dateTimeEdit_2">
+                  <widget class="QDateTimeEdit" name="dt_xaxis_max">
                    <property name="currentSection">
                     <enum>QDateTimeEdit::DaySection</enum>
                    </property>
@@ -376,7 +379,7 @@
                   </widget>
                  </item>
                  <item row="0" column="0">
-                  <widget class="QLabel" name="label_12">
+                  <widget class="QLabel" name="label_xaxis_min">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                      <horstretch>0</horstretch>
@@ -389,7 +392,7 @@
                   </widget>
                  </item>
                  <item row="1" column="0">
-                  <widget class="QLabel" name="label_13">
+                  <widget class="QLabel" name="label_xaxis_max">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                      <horstretch>0</horstretch>
@@ -404,7 +407,7 @@
                 </layout>
                </item>
                <item>
-                <widget class="QLabel" name="label_14">
+                <widget class="QLabel" name="label_yaxis">
                  <property name="text">
                   <string>Y Axis</string>
                  </property>
@@ -416,7 +419,7 @@
                <item>
                 <layout class="QGridLayout" name="gridLayout_4">
                  <item row="1" column="1">
-                  <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+                  <widget class="QDoubleSpinBox" name="dspin_yaxis_max">
                    <property name="alignment">
                     <set>Qt::AlignCenter</set>
                    </property>
@@ -432,7 +435,7 @@
                   </widget>
                  </item>
                  <item row="1" column="0">
-                  <widget class="QLabel" name="label_16">
+                  <widget class="QLabel" name="label_yaxis_max">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                      <horstretch>0</horstretch>
@@ -445,7 +448,7 @@
                   </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QDoubleSpinBox" name="doubleSpinBox">
+                  <widget class="QDoubleSpinBox" name="dspin_yaxis_min">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -467,7 +470,7 @@
                   </widget>
                  </item>
                  <item row="0" column="0">
-                  <widget class="QLabel" name="label_15">
+                  <widget class="QLabel" name="label_yaxis_min">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                      <horstretch>0</horstretch>
@@ -504,7 +507,7 @@
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_6">
              <item>
-              <widget class="QLabel" name="label_17">
+              <widget class="QLabel" name="label_cmap">
                <property name="text">
                 <string>Color map</string>
                </property>
@@ -514,14 +517,14 @@
               </widget>
              </item>
              <item>
-              <widget class="QComboBox" name="comboBox_3"/>
+              <widget class="QComboBox" name="combo_cmap"/>
              </item>
              <item>
-              <widget class="QTabWidget" name="tabWidget_2">
+              <widget class="QTabWidget" name="tabWidget_set_data">
                <property name="currentIndex">
-                <number>2</number>
+                <number>3</number>
                </property>
-               <widget class="QWidget" name="time">
+               <widget class="QWidget" name="tab_data_time">
                 <attribute name="title">
                  <string>Time</string>
                 </attribute>
@@ -529,56 +532,56 @@
                  <item>
                   <layout class="QGridLayout" name="gridLayout_5">
                    <item row="1" column="0">
-                    <widget class="QLabel" name="label_19">
+                    <widget class="QLabel" name="label_data_time_end">
                      <property name="text">
                       <string>End</string>
                      </property>
                     </widget>
                    </item>
                    <item row="3" column="0">
-                    <widget class="QLabel" name="label_21">
+                    <widget class="QLabel" name="label_data_time_step">
                      <property name="text">
                       <string>Step</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="0">
-                    <widget class="QLabel" name="label_20">
+                    <widget class="QLabel" name="label_data_time_span">
                      <property name="text">
                       <string>Span</string>
                      </property>
                     </widget>
                    </item>
                    <item row="0" column="0">
-                    <widget class="QLabel" name="label_18">
+                    <widget class="QLabel" name="label_data_time_start">
                      <property name="text">
                       <string>Start</string>
                      </property>
                     </widget>
                    </item>
                    <item row="0" column="1">
-                    <widget class="QDateTimeEdit" name="dateTimeEdit_3">
+                    <widget class="QDateTimeEdit" name="dt_data_time_start">
                      <property name="displayFormat">
                       <string>dd.MM.yyyy hh:mm</string>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QDateTimeEdit" name="dateTimeEdit_4">
+                    <widget class="QDateTimeEdit" name="dt_data_time_end">
                      <property name="displayFormat">
                       <string>dd.MM.yyyy hh:mm</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QTimeEdit" name="timeEdit">
+                    <widget class="QTimeEdit" name="t_data_time_span">
                      <property name="displayFormat">
                       <string>hh:mm:ss</string>
                      </property>
                     </widget>
                    </item>
                    <item row="3" column="1">
-                    <widget class="QTimeEdit" name="timeEdit_2">
+                    <widget class="QTimeEdit" name="t_data_time_step">
                      <property name="displayFormat">
                       <string>hh:mm:ss</string>
                      </property>
@@ -601,13 +604,13 @@
                  </item>
                 </layout>
                </widget>
-               <widget class="QWidget" name="lat">
+               <widget class="QWidget" name="tab_data_lat">
                 <attribute name="title">
                  <string>Lat.</string>
                 </attribute>
                 <layout class="QVBoxLayout" name="verticalLayout_8">
                  <item>
-                  <widget class="QLabel" name="label_28">
+                  <widget class="QLabel" name="label_lats">
                    <property name="text">
                     <string>Latitudes</string>
                    </property>
@@ -619,21 +622,21 @@
                  <item>
                   <layout class="QGridLayout" name="gridLayout_6">
                    <item row="0" column="1">
-                    <widget class="QLabel" name="label_22">
+                    <widget class="QLabel" name="label_lat_degs">
                      <property name="text">
-                      <string>Deg.</string>
+                      <string>Degs</string>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="0">
-                    <widget class="QLabel" name="label_23">
+                    <widget class="QLabel" name="label_lat_start">
                      <property name="text">
                       <string>Start</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QSpinBox" name="spinBox_13">
+                    <widget class="QSpinBox" name="spin_lat_end_degs">
                      <property name="minimum">
                       <number>-90</number>
                      </property>
@@ -643,14 +646,14 @@
                     </widget>
                    </item>
                    <item row="4" column="0">
-                    <widget class="QLabel" name="label_26">
+                    <widget class="QLabel" name="label_lat_step">
                      <property name="text">
                       <string>Step</string>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QSpinBox" name="spinBox_15">
+                    <widget class="QSpinBox" name="spin_lat_start_degs">
                      <property name="minimum">
                       <number>-90</number>
                      </property>
@@ -660,63 +663,63 @@
                     </widget>
                    </item>
                    <item row="3" column="2">
-                    <widget class="QSpinBox" name="spinBox_18">
+                    <widget class="QSpinBox" name="spin_lat_span_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="2">
-                    <widget class="QSpinBox" name="spinBox_16">
+                    <widget class="QSpinBox" name="spin_lat_start_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="0">
-                    <widget class="QLabel" name="label_24">
+                    <widget class="QLabel" name="label_lat_end">
                      <property name="text">
                       <string>End</string>
                      </property>
                     </widget>
                    </item>
                    <item row="4" column="1">
-                    <widget class="QSpinBox" name="spinBox_19">
+                    <widget class="QSpinBox" name="spin_lat_step_degs">
                      <property name="maximum">
                       <number>90</number>
                      </property>
                     </widget>
                    </item>
                    <item row="3" column="0">
-                    <widget class="QLabel" name="label_25">
+                    <widget class="QLabel" name="label_lat_span">
                      <property name="text">
                       <string>Span</string>
                      </property>
                     </widget>
                    </item>
                    <item row="4" column="2">
-                    <widget class="QSpinBox" name="spinBox_20">
+                    <widget class="QSpinBox" name="spin_lat_step_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="0" column="2">
-                    <widget class="QLabel" name="label_27">
+                    <widget class="QLabel" name="label_lat_mins">
                      <property name="text">
-                      <string>Min.</string>
+                      <string>Mins</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="2">
-                    <widget class="QSpinBox" name="spinBox_14">
+                    <widget class="QSpinBox" name="spin_lat_end_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="3" column="1">
-                    <widget class="QSpinBox" name="spinBox_17">
+                    <widget class="QSpinBox" name="spin_lat_span_degs">
                      <property name="maximum">
                       <number>90</number>
                      </property>
@@ -739,13 +742,13 @@
                  </item>
                 </layout>
                </widget>
-               <widget class="QWidget" name="lon">
+               <widget class="QWidget" name="tab_data_lon">
                 <attribute name="title">
                  <string>Lon.</string>
                 </attribute>
                 <layout class="QVBoxLayout" name="verticalLayout_9">
                  <item>
-                  <widget class="QLabel" name="label_29">
+                  <widget class="QLabel" name="label_lons">
                    <property name="text">
                     <string>Longitudes</string>
                    </property>
@@ -757,21 +760,21 @@
                  <item>
                   <layout class="QGridLayout" name="gridLayout_7">
                    <item row="0" column="1">
-                    <widget class="QLabel" name="label_30">
+                    <widget class="QLabel" name="label_lon_degs">
                      <property name="text">
-                      <string>Deg.</string>
+                      <string>Degs</string>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="0">
-                    <widget class="QLabel" name="label_31">
+                    <widget class="QLabel" name="label_lon_start">
                      <property name="text">
                       <string>Start</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QSpinBox" name="spinBox_21">
+                    <widget class="QSpinBox" name="spin_lon_end_degs">
                      <property name="minimum">
                       <number>-180</number>
                      </property>
@@ -781,14 +784,14 @@
                     </widget>
                    </item>
                    <item row="4" column="0">
-                    <widget class="QLabel" name="label_32">
+                    <widget class="QLabel" name="label_lon_step">
                      <property name="text">
                       <string>Step</string>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QSpinBox" name="spinBox_22">
+                    <widget class="QSpinBox" name="spin_lon_start_degs">
                      <property name="minimum">
                       <number>-180</number>
                      </property>
@@ -798,63 +801,63 @@
                     </widget>
                    </item>
                    <item row="3" column="2">
-                    <widget class="QSpinBox" name="spinBox_23">
+                    <widget class="QSpinBox" name="spin_lon_span_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="2">
-                    <widget class="QSpinBox" name="spinBox_24">
+                    <widget class="QSpinBox" name="spin_lon_start_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="0">
-                    <widget class="QLabel" name="label_33">
+                    <widget class="QLabel" name="label_lon_end">
                      <property name="text">
                       <string>End</string>
                      </property>
                     </widget>
                    </item>
                    <item row="4" column="1">
-                    <widget class="QSpinBox" name="spinBox_25">
+                    <widget class="QSpinBox" name="spin_lon_step_degs">
                      <property name="maximum">
                       <number>90</number>
                      </property>
                     </widget>
                    </item>
                    <item row="3" column="0">
-                    <widget class="QLabel" name="label_34">
+                    <widget class="QLabel" name="label_lon_span">
                      <property name="text">
                       <string>Span</string>
                      </property>
                     </widget>
                    </item>
                    <item row="4" column="2">
-                    <widget class="QSpinBox" name="spinBox_26">
+                    <widget class="QSpinBox" name="spin_lon_step_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="0" column="2">
-                    <widget class="QLabel" name="label_35">
+                    <widget class="QLabel" name="label_lon_mins">
                      <property name="text">
-                      <string>Min.</string>
+                      <string>Mins</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="2">
-                    <widget class="QSpinBox" name="spinBox_27">
+                    <widget class="QSpinBox" name="spin_lon_end_mins">
                      <property name="maximum">
                       <number>59</number>
                      </property>
                     </widget>
                    </item>
                    <item row="3" column="1">
-                    <widget class="QSpinBox" name="spinBox_28">
+                    <widget class="QSpinBox" name="spin_lon_span_degs">
                      <property name="maximum">
                       <number>90</number>
                      </property>
@@ -877,28 +880,25 @@
                  </item>
                 </layout>
                </widget>
-               <widget class="QWidget" name="dtec">
+               <widget class="QWidget" name="tab_data_dtec">
                 <attribute name="title">
                  <string>dTEC</string>
                 </attribute>
                 <layout class="QVBoxLayout" name="verticalLayout_10">
                  <item>
+                  <widget class="QLabel" name="label_lat_lon">
+                   <property name="text">
+                    <string>Latitude - Longitude</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <layout class="QGridLayout" name="gridLayout_8">
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="label_37">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="text">
-                      <string>Min</string>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="1" column="0">
-                    <widget class="QLabel" name="label_36">
+                    <widget class="QLabel" name="label_lat_lon_max">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                        <horstretch>0</horstretch>
@@ -910,8 +910,21 @@
                      </property>
                     </widget>
                    </item>
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="label_lat_lon_min">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="text">
+                      <string>Min</string>
+                     </property>
+                    </widget>
+                   </item>
                    <item row="0" column="1">
-                    <widget class="QDoubleSpinBox" name="doubleSpinBox_3">
+                    <widget class="QDoubleSpinBox" name="dspin_lat_lon_min">
                      <property name="sizePolicy">
                       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                        <horstretch>0</horstretch>
@@ -933,7 +946,7 @@
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QDoubleSpinBox" name="doubleSpinBox_4">
+                    <widget class="QDoubleSpinBox" name="dspin_lat_lon_max">
                      <property name="alignment">
                       <set>Qt::AlignCenter</set>
                      </property>
@@ -951,24 +964,143 @@
                   </layout>
                  </item>
                  <item>
-                  <spacer name="verticalSpacer_5">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
+                  <widget class="QLabel" name="label_lat_time">
+                   <property name="text">
+                    <string>Latitude - Time</string>
                    </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
                    </property>
-                  </spacer>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QGridLayout" name="gridLayout_9">
+                   <item row="1" column="0">
+                    <widget class="QLabel" name="label_lat_time_max">
+                     <property name="text">
+                      <string>Max</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="label_lat_time_min">
+                     <property name="text">
+                      <string>Min</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QDoubleSpinBox" name="dspin_lat_time_min">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="minimum">
+                      <double>-1000.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>1000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="dspin_lat_time_max">
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="minimum">
+                      <double>-1000.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>1000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label_lon_time">
+                   <property name="text">
+                    <string>Longitude - Time</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QGridLayout" name="gridLayout_10">
+                   <item row="1" column="0">
+                    <widget class="QLabel" name="label_lon_time_max">
+                     <property name="text">
+                      <string>Max</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="label_lon_time_min">
+                     <property name="text">
+                      <string>Min</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QDoubleSpinBox" name="dspin_lon_time_min">
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="minimum">
+                      <double>-1000.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>1000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="dspin_lon_time_max">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="decimals">
+                      <number>3</number>
+                     </property>
+                     <property name="minimum">
+                      <double>-1000.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>1000.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </widget>
               </widget>
              </item>
              <item>
-              <widget class="QCheckBox" name="checkBox">
+              <widget class="QCheckBox" name="check_cbar">
                <property name="text">
                 <string>Show color bar</string>
                </property>
@@ -986,7 +1118,7 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
-          <widget class="QComboBox" name="comboBox_4">
+          <widget class="QComboBox" name="combo_stage">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1001,7 +1133,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton">
+          <widget class="QPushButton" name="push_update">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1023,6 +1155,55 @@
       </layout>
      </widget>
     </item>
+    <item row="0" column="1">
+     <widget class="QTabWidget" name="tabWidget_graph">
+      <property name="font">
+       <font>
+        <pointsize>12</pointsize>
+       </font>
+      </property>
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tab_graph_map">
+       <attribute name="title">
+        <string>Lat.-Lon.</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_11">
+        <item>
+         <widget class="QWidget" name="map_widget" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_keogram_lat">
+       <attribute name="title">
+        <string>Lat.-Time</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_12">
+        <item>
+         <widget class="QWidget" name="keo_lat_widget" native="true"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_keogram_lon">
+       <attribute name="title">
+        <string>Lon..-Time</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_13">
+        <item>
+         <widget class="QWidget" name="keo_lon_widget" native="true"/>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -1030,7 +1211,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1000</width>
+     <width>1163</width>
      <height>26</height>
     </rect>
    </property>

@@ -387,6 +387,7 @@ class Ui_MainWindow(object):
         self.gridLayout_4.addWidget(self.pushButton_3, 0, 0, 1, 1)
         self.verticalLayout.addLayout(self.gridLayout_4)
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
+
         self.space_widget = MplWidget(parent=self.centralwidget,
                                       axes_map=GeoAxesMap(is_cbar=True))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
