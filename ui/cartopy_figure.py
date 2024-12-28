@@ -7,19 +7,31 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib import colormaps
 
-UA_COORDS = {'min_lat': 44, 'max_lat': 52.5,
-             'min_lon': 22, 'max_lon': 40.5,
-             'central_long': 31.5, 'central_lat': 48.5}
-EU_COORDS = {'min_lat': 36, 'max_lat': 71,
-             'min_lon': -10, 'max_lon': 30,
-             'central_long': 10, 'central_lat': 53.5}
-US_COORDS = {'min_lat': 23, 'max_lat': 55,
-             'min_lon': -126, 'max_lon': -66,
-             'central_long': -96, 'central_lat': 39}
 
-SA_COORDS = {'min_lat': -35, 'max_lat': -20,
-             'min_lon': 15, 'max_lon': 35,
-             'central_long': 25, 'central_lat': -27.5}
+class GeoCoords:
+    def __init__(self, degs: int, mins: int, secs=0):
+        self.degs = degs
+        self.mins = mins
+        self.secs = secs
+
+    def get_float_degs(self) -> float:
+        return self.degs + self.mins / 60. + self.secs / 3600.
+
+
+
+UA_COORDS = {'min_lat': GeoCoords(44, 0), 'max_lat': GeoCoords(52, 30),
+             'min_lon': GeoCoords(22, 0), 'max_lon': GeoCoords(40, 30),
+             'central_long': GeoCoords(31, 30), 'central_lat': GeoCoords(48, 30)}
+EU_COORDS = {'min_lat': GeoCoords(36, 0), 'max_lat': GeoCoords(71, 0),
+             'min_lon': GeoCoords(-10, 0), 'max_lon': GeoCoords(30, 0),
+             'central_long': GeoCoords(10, 0), 'central_lat': GeoCoords(53, 30)}
+US_COORDS = {'min_lat': GeoCoords(23, 0), 'max_lat': GeoCoords(55, 0),
+             'min_lon': GeoCoords(-126, 0), 'max_lon': GeoCoords(-66, 0),
+             'central_long': GeoCoords(-96, 0), 'central_lat': GeoCoords(39, 0)}
+
+SA_COORDS = {'min_lat': GeoCoords(-35, 0), 'max_lat': GeoCoords(-20, 0),
+             'min_lon': GeoCoords(15, 0), 'max_lon': GeoCoords(35, 0),
+             'central_long': GeoCoords(25, 0), 'central_lat': GeoCoords(-27, 30)}
 
 DEFAULT_SHP_PARAMS = {'face_color': 'none', 'edge_color': 'gray',
                       'border_width': 0.3, 'coast_width': 0.3}
@@ -54,8 +66,8 @@ class GeoAxesMap:
 
     def create_figure(self):
         current_crs = ccrs.LambertAzimuthalEqualArea(
-            central_longitude=self.coords['central_long'],
-            central_latitude=self.coords['central_lat']
+            central_longitude=self.coords['central_long'].get_float_degs(),
+            central_latitude=self.coords['central_lat'].get_float_degs()
         )
         self.figure = plt.figure()
         ax = plt.axes(projection=current_crs, frame_on=self.label_params['frame_on'])
@@ -81,8 +93,8 @@ class GeoAxesMap:
         gl.ylabel_style = {'size': self.label_params['size'],
                            'color': self.label_params['color'],
                            'family': self.label_params['family']}
-        ax.set_extent([self.coords['min_lon'], self.coords['max_lon'],
-                       self.coords['min_lat'], self.coords['max_lat']],
+        ax.set_extent([self.coords['min_lon'].get_float_degs(), self.coords['max_lon'].get_float_degs(),
+                       self.coords['min_lat'].get_float_degs(), self.coords['max_lat'].get_float_degs()],
                       crs=ccrs.PlateCarree())
         if self.is_cbar:
             norm = plt.Normalize(-1, 1)
