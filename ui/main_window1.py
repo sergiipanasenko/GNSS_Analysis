@@ -10,6 +10,10 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS
+from ui.mpl_figure import DEFAULT_TICK_PARAMS, AxesMap
+from ui.qt_utils import MplWidget
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -19,10 +23,16 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
-        self.time_widget = QtWidgets.QWidget(self.centralwidget)
+        t_tick_params = DEFAULT_TICK_PARAMS.copy()
+        t_map = AxesMap(tick_params=t_tick_params)
+        self.time_widget = MplWidget(parent=self.centralwidget,
+                                     axes_map=t_map)
         self.time_widget.setObjectName("time_widget")
         self.gridLayout.addWidget(self.time_widget, 1, 1, 1, 1)
-        self.receiver_widget = QtWidgets.QWidget(self.centralwidget)
+        r_label_params = DEFAULT_MAP_PARAMS | {'frame_on': False}
+        r_grid_params = DEFAULT_GRID_PARAMS | {'draw_labels': False}
+        r_map = GeoAxesMap(label_params=r_label_params, grid_params=r_grid_params)
+        self.receiver_widget = MplWidget(parent=self.centralwidget, axes_map=r_map)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -592,7 +602,9 @@ class Ui_MainWindow(object):
         self.tab_graph_map.setObjectName("tab_graph_map")
         self.verticalLayout_11 = QtWidgets.QVBoxLayout(self.tab_graph_map)
         self.verticalLayout_11.setObjectName("verticalLayout_11")
-        self.map_widget = QtWidgets.QWidget(self.tab_graph_map)
+        # self.map_widget = QtWidgets.QWidget(self.tab_graph_map)
+        self.map_widget = MplWidget(parent=self.tab_graph_map,
+                                    axes_map=GeoAxesMap(is_cbar=True))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -688,7 +700,8 @@ class Ui_MainWindow(object):
         self.dt_data_time_end.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm"))
         self.t_data_time_span.setDisplayFormat(_translate("MainWindow", "hh:mm:ss"))
         self.t_data_time_step.setDisplayFormat(_translate("MainWindow", "hh:mm:ss"))
-        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_time), _translate("MainWindow", "Time"))
+        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_time),
+                                           _translate("MainWindow", "Time"))
         self.label_lats.setText(_translate("MainWindow", "Latitudes"))
         self.label_lat_degs.setText(_translate("MainWindow", "Degs"))
         self.label_lat_start.setText(_translate("MainWindow", "Start"))
@@ -696,7 +709,8 @@ class Ui_MainWindow(object):
         self.label_lat_end.setText(_translate("MainWindow", "End"))
         self.label_lat_span.setText(_translate("MainWindow", "Span"))
         self.label_lat_mins.setText(_translate("MainWindow", "Mins"))
-        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_lat), _translate("MainWindow", "Lat."))
+        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_lat),
+                                           _translate("MainWindow", "Lat."))
         self.label_lons.setText(_translate("MainWindow", "Longitudes"))
         self.label_lon_degs.setText(_translate("MainWindow", "Degs"))
         self.label_lon_start.setText(_translate("MainWindow", "Start"))
@@ -704,7 +718,8 @@ class Ui_MainWindow(object):
         self.label_lon_end.setText(_translate("MainWindow", "End"))
         self.label_lon_span.setText(_translate("MainWindow", "Span"))
         self.label_lon_mins.setText(_translate("MainWindow", "Mins"))
-        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_lon), _translate("MainWindow", "Lon."))
+        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_lon),
+                                           _translate("MainWindow", "Lon."))
         self.label_lat_lon.setText(_translate("MainWindow", "Latitude - Longitude"))
         self.label_lat_lon_max.setText(_translate("MainWindow", "Max"))
         self.label_lat_lon_min.setText(_translate("MainWindow", "Min"))
@@ -714,13 +729,17 @@ class Ui_MainWindow(object):
         self.label_lon_time.setText(_translate("MainWindow", "Longitude - Time"))
         self.label_lon_time_max.setText(_translate("MainWindow", "Max"))
         self.label_lon_time_min.setText(_translate("MainWindow", "Min"))
-        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_dtec), _translate("MainWindow", "dTEC"))
+        self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_dtec),
+                                           _translate("MainWindow", "dTEC"))
         self.check_cbar.setText(_translate("MainWindow", "Show color bar"))
         self.tabWidget_set.setTabText(self.tabWidget_set.indexOf(self.tab_data), _translate("MainWindow", "Data"))
         self.push_update.setText(_translate("MainWindow", "Update"))
-        self.tabWidget_graph.setTabText(self.tabWidget_graph.indexOf(self.tab_graph_map), _translate("MainWindow", "Lat.-Lon."))
-        self.tabWidget_graph.setTabText(self.tabWidget_graph.indexOf(self.tab_keogram_lat), _translate("MainWindow", "Lat.-Time"))
-        self.tabWidget_graph.setTabText(self.tabWidget_graph.indexOf(self.tab_keogram_lon), _translate("MainWindow", "Lon..-Time"))
+        self.tabWidget_graph.setTabText(self.tabWidget_graph.indexOf(self.tab_graph_map),
+                                        _translate("MainWindow", "Lat.-Lon."))
+        self.tabWidget_graph.setTabText(self.tabWidget_graph.indexOf(self.tab_keogram_lat),
+                                        _translate("MainWindow", "Lat.-Time"))
+        self.tabWidget_graph.setTabText(self.tabWidget_graph.indexOf(self.tab_keogram_lon),
+                                        _translate("MainWindow", "Lon..-Time"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.menuSettings.setTitle(_translate("MainWindow", "Settings"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
@@ -731,6 +750,7 @@ class Ui_MainWindow(object):
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()

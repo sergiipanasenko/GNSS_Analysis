@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QMainWindow, QFileDialog
 
 from gnss import GnssArchive, GnssData
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS
-from ui.main_window import Ui_MainWindow
+from ui.main_window1 import Ui_MainWindow
 import cartopy.crs as ccrs
 
 from matplotlib.patches import Rectangle
@@ -13,6 +13,7 @@ from matplotlib.cm import ScalarMappable
 import math
 import time
 import os
+from datetime import datetime
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -23,9 +24,9 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         # ui loading
         self.setupUi(self)
         self.time_axes = self.time_widget.canvas.figure.gca()
-        self.space_axes = self.space_widget.canvas.figure.axes[0]
-        self.space_cbar_axes = self.space_widget.canvas.figure.axes[1]
-        self.space_color_bar = self.space_widget.axes_map.color_bar
+        self.map_axes = self.map_widget.canvas.figure.axes[0]
+        self.map_cbar_axes = self.map_widget.canvas.figure.axes[1]
+        self.map_color_bar = self.map_widget.axes_map.color_bar
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
 
         # centering
@@ -33,34 +34,53 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         center_point = (QGuiApplication.primaryScreen().
                         availableGeometry().center())
         y_coord = center_point.y()
-        center_point.setY(y_coord - 100)
+        center_point.setY(y_coord - 40)
         qt_rect.moveCenter(center_point)
         self.move(qt_rect.topLeft())
 
         # settings
-        self.limit_space_dtec = {'min_dtec': -0.5, 'max_dtec': 0.5}
+        self.limit_map_dtec = {'min_dtec': -0.5, 'max_dtec': 0.5}
         self.limit_time = {'min_time': 0.0, 'max_time': 24.0, 'min_dtec': -1.0, 'max_dtec': 1.0}
         self.current_coords = {"lon": 33.370278, 'lon_span': 0.75, 'lat': 46.777778, 'lat_span': 0.75}
         self.current_time = {'time': 12.0, 'time_span': 0.01}
         self.time_axes.set_xlim((self.limit_time['min_time'], self.limit_time['max_time']))
         self.time_axes.set_ylim((self.limit_time['min_dtec'], self.limit_time['max_dtec']))
-        self.lineEdit_6.setText(str(self.limit_time['min_time']))
-        self.lineEdit_5.setText(str(self.limit_time['max_time']))
-        self.lineEdit_8.setText(str(self.limit_time['min_dtec']))
-        self.lineEdit_7.setText(str(self.limit_time['max_dtec']))
+        self.dspin_yaxis_min.setValue(self.limit_time['min_dtec'])
+        self.dspin_yaxis_max.setValue(self.limit_time['max_dtec'])
+        self.dspin_lat_lon_min.setValue(self.limit_map_dtec['min_dtec'])
+        self.dspin_lat_lon_max.setValue(self.limit_map_dtec['max_dtec'])
+        self.dspin_lat_time_min.setValue(self.limit_map_dtec['min_dtec'])
+        self.dspin_lat_time_max.setValue(self.limit_map_dtec['max_dtec'])
+        self.dspin_lon_time_min.setValue(self.limit_map_dtec['min_dtec'])
+        self.dspin_lon_time_max.setValue(self.limit_map_dtec['max_dtec'])
 
-        space_lim = self.space_widget.axes_map.coords
-        self.lineEdit_4.setText(str(round(space_lim['min_lon'], 3)))
-        self.lineEdit_3.setText(str(round(space_lim['max_lon'], 3)))
-        self.lineEdit.setText(str(round(space_lim['min_lat'], 3)))
-        self.lineEdit_2.setText(str(round(space_lim['max_lat'], 3)))
+        # self.lineEdit_6.setText(str(self.limit_time['min_time']))
+        # self.lineEdit_5.setText(str(self.limit_time['max_time']))
+        # self.lineEdit_8.setText(str(self.limit_time['min_dtec']))
+        # self.lineEdit_7.setText(str(self.limit_time['max_dtec']))
 
-        self.lineEdit_9.setText(str(self.current_time['time_span']))
-        self.lineEdit_10.setText(str(self.current_time['time']))
-        self.lineEdit_11.setText(str(self.current_coords['lat_span']))
-        self.lineEdit_12.setText(str(self.current_coords['lat']))
-        self.lineEdit_14.setText(str(self.current_coords['lon_span']))
-        self.lineEdit_13.setText(str(self.current_coords['lon']))
+        map_lim = self.map_widget.axes_map.coords
+        self.spin_minlon_degs.setValue(int(map_lim['min_lon']))
+        self.spin_maxlon_degs.setValue(int(map_lim['max_lon']))
+        self.spin_minlat_degs.setValue(int(map_lim['min_lat']))
+        self.spin_maxlat_degs.setValue(int(map_lim['max_lat']))
+        self.spin_centrlat_degs.setValue(int(map_lim['central_lat']))
+        self.spin_centrlon_degs.setValue(int(map_lim['central_long']))
+        # self.lineEdit_4.setText(str(int(space_lim['min_lon'], 3)))
+        # self.lineEdit_3.setText(str(round(space_lim['max_lon'], 3)))
+        # self.lineEdit.setText(str(round(space_lim['min_lat'], 3)))
+        # self.lineEdit_2.setText(str(round(space_lim['max_lat'], 3)))
+        #
+        self.spin_lat_start_degs.setValue(int(self.current_coords['lat']))
+        self.spin_lat_end_degs.setValue(int(self.current_coords['lat']))
+        self.spin_lon_start_degs.setValue(int(self.current_coords['lon']))
+        self.spin_lon_end_degs.setValue(int(self.current_coords['lon']))
+        # self.lineEdit_9.setText(str(self.current_time['time_span']))
+        # self.lineEdit_10.setText(str(self.current_time['time']))
+        # self.lineEdit_11.setText(str(self.current_coords['lat_span']))
+        # self.lineEdit_12.setText(str(self.current_coords['lat']))
+        # self.lineEdit_14.setText(str(self.current_coords['lon_span']))
+        # self.lineEdit_13.setText(str(self.current_coords['lon']))
 
         self.gnss_archive = None
         self.gnss_data = GnssData()
@@ -73,10 +93,10 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.min_elm = 30
 
         # connections
-        self.pushButton.clicked.connect(self.update_coords)
-        self.pushButton_2.clicked.connect(self.update_time_value)
-        self.pushButton_3.clicked.connect(self.update_figures)
-        self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
+        # self.pushButton.clicked.connect(self.update_coords)
+        # self.pushButton_2.clicked.connect(self.update_time_value)
+        # self.pushButton_3.clicked.connect(self.update_figures)
+        # self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
 
     def set_current_coords_time(self):
         self.current_time['time'] = float(self.lineEdit_10.text())
