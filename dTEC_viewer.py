@@ -1,8 +1,9 @@
+from PyQt5.QtCore import QDateTime, QDate, QTime
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QMainWindow, QFileDialog
 
 from gnss import GnssArchive, GnssData
-from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS
+from ui.cartopy_figure import GeoAxesMap, GeoCoord, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS, PROJECTIONS
 from ui.main_window1 import Ui_MainWindow
 import cartopy.crs as ccrs
 
@@ -14,6 +15,9 @@ import math
 import time
 import os
 from datetime import datetime
+
+
+STAGES = ('Original', 'Without outliers', 'Interpolated', 'Bandpass filtered')
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -39,11 +43,32 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.move(qt_rect.topLeft())
 
         # settings
+        self.combo_region.setCurrentIndex(2)
+        self.combo_projection.addItems(PROJECTIONS)
+        self.combo_stage.addItems(STAGES)
+
+        min_date_time = QDateTime()
+        min_date_time.setDate(QDate.currentDate())
+        min_date_time.setTime(QTime(0, 0, 0))
+        max_date_time = min_date_time.addSecs(23 * 3600 + 59 * 60 + 59)
+        current_date_time = QDateTime.currentDateTime()
         self.limit_map_dtec = {'min_dtec': -0.5, 'max_dtec': 0.5}
-        self.limit_time = {'min_time': 0.0, 'max_time': 24.0, 'min_dtec': -1.0, 'max_dtec': 1.0}
-        self.current_coords = {"lon": 33.370278, 'lon_span': 0.75, 'lat': 46.777778, 'lat_span': 0.75}
-        self.current_time = {'time': 12.0, 'time_span': 0.01}
-        self.time_axes.set_xlim((self.limit_time['min_time'], self.limit_time['max_time']))
+        self.limit_time = {'min_time': min_date_time, 'max_time': max_date_time,
+                           'min_dtec': -1.0, 'max_dtec': 1.0}
+        self.analyzed_coords = {"start_lon": GeoCoord(46, 46, 34),
+                               'end_lon': GeoCoord(46, 46, 34),
+                               'lon_span': GeoCoord(0, 45),
+                               'start_lat': GeoCoord(33, 22, 18),
+                               'end_lat': GeoCoord(33, 22, 18),
+                               'lat_span': GeoCoord(0, 45)}
+        self.analyzed_time = {'start_time': current_date_time,
+                              'end_time': current_date_time,
+                              'time_span': QTime(0, 0, 30)}
+        float_min_timw = (min_date_time.time().hour() + min_date_time.time().minute() / 60. +
+                          min_date_time.time().second() / 3600.)
+        float_max_timw = (max_date_time.time().hour() + max_date_time.time().minute() / 60. +
+                          max_date_time.time().second() / 3600.)
+        self.time_axes.set_xlim((float_min_timw, float_max_timw))
         self.time_axes.set_ylim((self.limit_time['min_dtec'], self.limit_time['max_dtec']))
         self.dspin_yaxis_min.setValue(self.limit_time['min_dtec'])
         self.dspin_yaxis_max.setValue(self.limit_time['max_dtec'])
@@ -54,10 +79,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.dspin_lon_time_min.setValue(self.limit_map_dtec['min_dtec'])
         self.dspin_lon_time_max.setValue(self.limit_map_dtec['max_dtec'])
 
-        # self.lineEdit_6.setText(str(self.limit_time['min_time']))
-        # self.lineEdit_5.setText(str(self.limit_time['max_time']))
-        # self.lineEdit_8.setText(str(self.limit_time['min_dtec']))
-        # self.lineEdit_7.setText(str(self.limit_time['max_dtec']))
+        self.dt_xaxis_min.setDateTime(self.limit_time['min_time'])
+        self.dt_xaxis_max.setDateTime(self.limit_time['max_time'])
 
         map_lim = self.map_widget.axes_map.coords
         self.spin_minlon_degs.setValue(map_lim['min_lon'].degs)
@@ -72,26 +95,27 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.spin_maxlat_mins.setValue(map_lim['max_lat'].mins)
         self.spin_centrlat_mins.setValue(map_lim['central_lat'].mins)
         self.spin_centrlon_mins.setValue(map_lim['central_long'].mins)
-        # self.lineEdit_4.setText(str(int(space_lim['min_lon'], 3)))
-        # self.lineEdit_3.setText(str(round(space_lim['max_lon'], 3)))
-        # self.lineEdit.setText(str(round(space_lim['min_lat'], 3)))
-        # self.lineEdit_2.setText(str(round(space_lim['max_lat'], 3)))
         #
-        self.spin_lat_start_degs.setValue(int(self.current_coords['lat']))
-        self.spin_lat_end_degs.setValue(int(self.current_coords['lat']))
-        self.spin_lon_start_degs.setValue(int(self.current_coords['lon']))
-        self.spin_lon_end_degs.setValue(int(self.current_coords['lon']))
-        # self.lineEdit_9.setText(str(self.current_time['time_span']))
-        # self.lineEdit_10.setText(str(self.current_time['time']))
-        # self.lineEdit_11.setText(str(self.current_coords['lat_span']))
-        # self.lineEdit_12.setText(str(self.current_coords['lat']))
-        # self.lineEdit_14.setText(str(self.current_coords['lon_span']))
-        # self.lineEdit_13.setText(str(self.current_coords['lon']))
+        self.spin_lat_start_degs.setValue(self.analyzed_coords['start_lat'].degs)
+        self.spin_lat_start_mins.setValue(self.analyzed_coords['start_lat'].mins)
+        self.spin_lat_end_degs.setValue(self.analyzed_coords['end_lat'].degs)
+        self.spin_lat_end_mins.setValue(self.analyzed_coords['end_lat'].mins)
+        self.spin_lon_start_degs.setValue(self.analyzed_coords['start_lon'].degs)
+        self.spin_lon_start_mins.setValue(self.analyzed_coords['start_lon'].mins)
+        self.spin_lon_end_degs.setValue(self.analyzed_coords['end_lon'].degs)
+        self.spin_lon_end_mins.setValue(self.analyzed_coords['end_lon'].mins)
+        self.dt_data_time_start.setDateTime(self.analyzed_time['start_time'])
+        self.dt_data_time_end.setDateTime(self.analyzed_time['end_time'])
+        self.t_data_time_span.setTime(self.analyzed_time['time_span'])
+        self.spin_lat_span_degs.setValue(self.analyzed_coords['lat_span'].degs)
+        self.spin_lat_span_mins.setValue(self.analyzed_coords['lat_span'].mins)
+        self.spin_lon_span_degs.setValue(self.analyzed_coords['lon_span'].degs)
+        self.spin_lon_span_mins.setValue(self.analyzed_coords['lon_span'].mins)
 
         self.gnss_archive = None
         self.gnss_data = GnssData()
-        self.gnss_data.coord_values = self.current_coords
-        self.gnss_data.time_values = self.current_time
+        self.gnss_data.coord_values = self.analyzed_coords
+        self.gnss_data.time_values = self.analyzed_time
 
         self.filter_sec = 7200
         self.in_dir = 'results/in/EU'
@@ -99,36 +123,32 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.min_elm = 30
 
         # connections
-        # self.pushButton.clicked.connect(self.update_coords)
-        # self.pushButton_2.clicked.connect(self.update_time_value)
-        # self.pushButton_3.clicked.connect(self.update_figures)
-        # self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
+        self.push_update.clicked.connect(self.update_coords)
+        self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
 
-    def set_current_coords_time(self):
-        self.current_time['time'] = float(self.lineEdit_10.text())
-        self.current_time['time_span'] = float(self.lineEdit_9.text())
-        self.current_coords['lon'] = float(self.lineEdit_13.text())
-        self.current_coords['lon_span'] = float(self.lineEdit_14.text())
-        self.current_coords['lat'] = float(self.lineEdit_12.text())
-        self.current_coords['lat_span'] = float(self.lineEdit_11.text())
+    def update_data(self):
+        pass
 
     def update_coords(self):
-        min_lat = float(self.lineEdit.text())
-        max_lat = float(self.lineEdit_2.text())
-        min_lon = float(self.lineEdit_4.text())
-        max_lon = float(self.lineEdit_3.text())
+        self.combo_region.setCurrentIndex(0)
+        min_lat = GeoCoord(self.spin_minlat_degs.value(), self.spin_minlat_mins.value())
+        max_lat = GeoCoord(self.spin_maxlat_degs.value(), self.spin_maxlat_mins.value())
+        min_lon = GeoCoord(self.spin_minlon_degs.value(), self.spin_minlon_mins.value())
+        max_lon = GeoCoord(self.spin_maxlon_degs.value(), self.spin_maxlon_mins.value())
+        centr_lat = GeoCoord(self.spin_centrlat_degs.value(), self.spin_centrlat_mins.value())
+        centr_lon = GeoCoord(self.spin_centrlon_degs.value(), self.spin_centrlon_mins.value())
         coords = {'min_lat': min_lat, 'max_lat': max_lat,
                   'min_lon': min_lon, 'max_lon': max_lon,
-                  'central_long': (min_lon + max_lon) / 2,
-                  'central_lat': (min_lat + max_lat) / 2}
-        self.space_widget.axes_map.coords = coords
-        s_width, s_height = self.space_widget.canvas.figure.get_size_inches()
-        self.space_widget.axes_map = GeoAxesMap(coords=coords, is_cbar=True)
-        self.space_widget.axes_map.create_figure()
-        self.space_widget.canvas.figure = self.space_widget.axes_map.figure
-        self.space_color_bar = self.space_widget.axes_map.color_bar
-        self.space_widget.canvas.figure.set_size_inches(s_width, s_height)
-        self.space_widget.canvas.draw()
+                  'central_long': centr_lon,
+                  'central_lat': centr_lat}
+        self.map_widget.axes_map.coords = coords
+        s_width, s_height = self.map_widget.canvas.figure.get_size_inches()
+        self.map_widget.axes_map = GeoAxesMap(coords=coords, is_cbar=True)
+        self.map_widget.axes_map.create_figure()
+        self.map_widget.canvas.figure = self.map_widget.axes_map.figure
+        self.map_color_bar = self.map_widget.axes_map.color_bar
+        self.map_widget.canvas.figure.set_size_inches(s_width, s_height)
+        self.map_widget.canvas.draw()
         r_label_params = DEFAULT_MAP_PARAMS | {'frame_on': False}
         r_grid_params = DEFAULT_GRID_PARAMS | {'draw_labels': False}
         self.receiver_widget.axes_map = GeoAxesMap(coords=coords,
@@ -139,8 +159,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.receiver_widget.canvas.figure = self.receiver_widget.axes_map.figure
         self.receiver_widget.canvas.figure.set_size_inches(r_width, r_height)
         self.receiver_widget.canvas.draw()
-        self.space_axes = self.space_widget.canvas.figure.axes[0]
-        self.space_cbar_axes = self.space_widget.canvas.figure.axes[1]
+        self.map_axes = self.map_widget.canvas.figure.axes[0]
+        self.map_cbar_axes = self.map_widget.canvas.figure.axes[1]
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
         self.plot_receivers()
 
@@ -276,7 +296,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
 
     def update_figures(self):
         if self.gnss_archive:
-            self.set_current_coords_time()
+            self.set_coords_time()
             self.plot_timestamp_data()
             self.plot_coords_stamp_data()
             print("Figure updating is completed.")

@@ -8,7 +8,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib import colormaps
 
 
-class GeoCoords:
+class GeoCoord:
     def __init__(self, degs: int, mins: int, secs=0):
         self.degs = degs
         self.mins = mins
@@ -19,19 +19,19 @@ class GeoCoords:
 
 
 
-UA_COORDS = {'min_lat': GeoCoords(44, 0), 'max_lat': GeoCoords(52, 30),
-             'min_lon': GeoCoords(22, 0), 'max_lon': GeoCoords(40, 30),
-             'central_long': GeoCoords(31, 30), 'central_lat': GeoCoords(48, 30)}
-EU_COORDS = {'min_lat': GeoCoords(36, 0), 'max_lat': GeoCoords(71, 0),
-             'min_lon': GeoCoords(-10, 0), 'max_lon': GeoCoords(30, 0),
-             'central_long': GeoCoords(10, 0), 'central_lat': GeoCoords(53, 30)}
-US_COORDS = {'min_lat': GeoCoords(23, 0), 'max_lat': GeoCoords(55, 0),
-             'min_lon': GeoCoords(-126, 0), 'max_lon': GeoCoords(-66, 0),
-             'central_long': GeoCoords(-96, 0), 'central_lat': GeoCoords(39, 0)}
+UA_COORDS = {'min_lat': GeoCoord(44, 0), 'max_lat': GeoCoord(52, 30),
+             'min_lon': GeoCoord(22, 0), 'max_lon': GeoCoord(40, 30),
+             'central_long': GeoCoord(31, 30), 'central_lat': GeoCoord(48, 30)}
+EU_COORDS = {'min_lat': GeoCoord(36, 0), 'max_lat': GeoCoord(71, 0),
+             'min_lon': GeoCoord(-10, 0), 'max_lon': GeoCoord(30, 0),
+             'central_long': GeoCoord(10, 0), 'central_lat': GeoCoord(53, 30)}
+US_COORDS = {'min_lat': GeoCoord(23, 0), 'max_lat': GeoCoord(55, 0),
+             'min_lon': GeoCoord(-126, 0), 'max_lon': GeoCoord(-66, 0),
+             'central_long': GeoCoord(-96, 0), 'central_lat': GeoCoord(39, 0)}
 
-SA_COORDS = {'min_lat': GeoCoords(-35, 0), 'max_lat': GeoCoords(-20, 0),
-             'min_lon': GeoCoords(15, 0), 'max_lon': GeoCoords(35, 0),
-             'central_long': GeoCoords(25, 0), 'central_lat': GeoCoords(-27, 30)}
+SA_COORDS = {'min_lat': GeoCoord(-35, 0), 'max_lat': GeoCoord(-20, 0),
+             'min_lon': GeoCoord(15, 0), 'max_lon': GeoCoord(35, 0),
+             'central_long': GeoCoord(25, 0), 'central_lat': GeoCoord(-27, 30)}
 
 DEFAULT_SHP_PARAMS = {'face_color': 'none', 'edge_color': 'gray',
                       'border_width': 0.3, 'coast_width': 0.3}
@@ -42,6 +42,42 @@ DEFAULT_MAP_PARAMS = {'size': 18, 'color': 'black',
 DEFAULT_CBAR_PARAMS = {'size': 16, 'color': 'black',
                        'family': 'Times New Roman',
                        'title_pad': 18.0, 'title': 'dTEC (TECU)'}
+
+
+PROJECTIONS = (
+    'LambertAzimuthalEqualArea',
+    'PlateCarree',
+    'AlbersEqualArea',
+    'AzimuthalEquidistant',
+    'EquidistantConic',
+    'LambertConformal',
+    'LambertCylindrical',
+    'Mercator',
+    'Miller',
+    'Mollweide',
+    'ObliqueMercator',
+    'Orthographic',
+    'Robinson',
+    'Sinusoidal',
+    'Stereographic',
+    'TransverseMercator',
+    'InterruptedGoodeHomolosine',
+    'RotatedPole',
+    'Geostationary',
+    'NearsidePerspective',
+    'EckertI',
+    'EckertII',
+    'EckertIII',
+    'EckertIV',
+    'EckertV',
+    'EckertVI',
+    'Aitoff',
+    'EqualEarth',
+    'Gnomonic',
+    'Hammer',
+    'NorthPolarStereo',
+    'SouthPolarStereo',
+)
 
 
 class GeoAxesMap:
