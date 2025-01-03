@@ -18,7 +18,6 @@ class GeoCoord:
         return self.degs + self.mins / 60. + self.secs / 3600.
 
 
-
 UA_COORDS = {'min_lat': GeoCoord(44, 0), 'max_lat': GeoCoord(52, 30),
              'min_lon': GeoCoord(22, 0), 'max_lon': GeoCoord(40, 30),
              'central_long': GeoCoord(31, 30), 'central_lat': GeoCoord(48, 30)}

@@ -1,6 +1,19 @@
 from zipfile import Path
 from sys import argv
 import os
+from datetime import datetime
+
+from PyQt5.QtCore import QDateTime, QTime
+
+from ui.cartopy_figure import GeoCoord
+
+
+def convert_to_hours(tt: QTime) -> float:
+    return tt.hour() + tt.minute() / 60. + tt.second() / 3600.
+
+
+def convert_to_seconds(tt: QTime) -> int:
+    return tt.hour() * 3600 + tt.minute() * 60 + tt.second()
 
 
 class GnssArchive:
@@ -10,7 +23,7 @@ class GnssArchive:
         self.archive_name = archive_name
         self.root_dir = self.__get_root_dir()
         self.day_number = self.__get_day_number()
-        self.year = self.__get_year()
+        self.year = self.get_year()
         self.date = self.__get_date()
 
     def __get_root_dir(self):
@@ -19,8 +32,14 @@ class GnssArchive:
     def __get_day_number(self):
         return self.root_dir[:3]
 
-    def __get_year(self):
+    def get_year(self):
         return self.root_dir[4:8]
+
+    def get_month(self):
+        return self.root_dir[9:11]
+
+    def get_day(self):
+        return self.root_dir[12:]
 
     def __get_date(self):
         return self.root_dir[4:]
@@ -100,31 +119,42 @@ class GnssArchive:
 class GnssData:
     def __init__(self):
         self.add_dir = None
-        self.coord_values = {"lon": 0, "lon_span": 0, "lat": 0, "lat_span": 0}
-        self.time_values = {'time': 0, "time_span": 0}
+        self.coord_values = {"start_lon": GeoCoord(0, 0, 0),
+                             'end_lon': GeoCoord(0, 0, 0),
+                             'lon_span': GeoCoord(0, 0),
+                             'start_lat': GeoCoord(0, 0, 0),
+                             'end_lat': GeoCoord(0, 0, 0),
+                             'lat_span': GeoCoord(0, 0)}
+        self.time_values = {'start_time': QDateTime(),
+                            'end_time': QDateTime(),
+                            'time_span': QDateTime()}
+        self.current_coord_value = {'lon': GeoCoord(0, 0, 0),
+                                    'lat': GeoCoord(0, 0, 0)}
+        self.current_time_value = {'time': QDateTime()}
         self.data_title = ['hour', 'min', 'sec', 'dTEC', 'azm', 'elm', 'gdlat', 'gdlon']
         self.data = []
         self.time_dtec = []
         self.lon_lat_dtec = []
 
-    @staticmethod
-    def get_str_value(value):
-        return str(value).replace('.', 'p')
-
     def get_time_dtec_file_stem(self, out_dir):
-        dir_name = f"{out_dir}/{self.add_dir}/Coords/1"
+        dir_name = f"{out_dir}/{self.add_dir}/Map/1"
         os.makedirs(dir_name, exist_ok=True)
-        file_name = (f"{self.get_str_value(self.coord_values['lon'])}_"
-                     f"{self.get_str_value(self.coord_values['lon_span'])}lon_"
-                     f"{self.get_str_value(self.coord_values['lat'])}_"
-                     f"{self.get_str_value(self.coord_values['lat_span'])}lat")
+        file_name = (f"{self.coord_values['lon'].degs}d"
+                     f"{self.coord_values['lon'].mins}m_"
+                     f"{self.coord_values['lon_span'].degs}d"
+                     f"{self.coord_values['lon_span'].mins}m_lon_"
+                     f"{self.coord_values['lat'].degs}d"
+                     f"{self.coord_values['lat'].mins}m_"
+                     f"{self.coord_values['lat_span'].degs}d"
+                     f"{self.coord_values['lat_span'].mins}m_lat")
         return f"{dir_name}/{file_name}"
 
     def get_lon_lat_dtec_file_stem(self, out_dir):
         dir_name = f"{out_dir}/{self.add_dir}/Time/1"
         os.makedirs(dir_name, exist_ok=True)
-        file_name = (f"{self.get_str_value(self.time_values['time'])}_"
-                     f"{self.get_str_value(self.time_values['time_span'])}")
+        file_name = (f"{self.time_values['start_time'].toString('hhmmss')}_"
+                     f"{self.time_values['time_span'].toString('hhmmss')}")
+        print(file_name)
         return f"{dir_name}/{file_name}"
 
     def read_gnss_data(self, file_name):
@@ -139,19 +169,28 @@ class GnssData:
             with open(time_file_name, mode='r') as time_file:
                 self.time_dtec = [list(map(float, line.split())) for line in time_file]
         else:
+            self.current_coord_value['lon'] = self.coord_values['start_lon']
+            self.current_coord_value['lat'] = self.coord_values['start_lat']
             self.time_dtec = []
+            current_lon = self.current_coord_value['lon'].get_float_degs()
+            lon_span = self.coord_values['lon_span'].get_float_degs()
+            current_lat = self.current_coord_value['lat'].get_float_degs()
+            lat_span = self.coord_values['lat_span'].get_float_degs()
+            current_time = QDateTime()
             with open(time_file_name, mode='w') as time_file:
                 for line in self.data:
                     data = list(map(float, line.split()))
                     g_data = dict(zip(self.data_title, data))
-                    if all((g_data['gdlat'] >= self.coord_values['lat'] - self.coord_values['lat_span'] / 2,
-                            g_data['gdlat'] <= self.coord_values['lat'] + self.coord_values['lat_span'] / 2,
-                            g_data['gdlon'] >= self.coord_values['lon'] - self.coord_values['lon_span'] / 2,
-                            g_data['gdlon'] <= self.coord_values['lon'] + self.coord_values['lon_span'] / 2)):
+                    if all((g_data['gdlat'] >= current_lat - lat_span / 2,
+                            g_data['gdlat'] <= current_lat + lat_span / 2,
+                            g_data['gdlon'] >= current_lon - lon_span / 2,
+                            g_data['gdlon'] <= current_lon + lon_span / 2)):
                         c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
-                        time_dtec_data = [c_time, g_data['dTEC']]
+                        time_dtec_data = (c_time, g_data['dTEC'])
+                        current_time.setDate(self.current_time_value['time'].date())
+                        current_time.setTime(QTime(g_data['hour'], g_data['min'], g_data['sec']))
                         self.time_dtec.append(time_dtec_data)
-                        time_file.write(f"{c_time}\t{g_data['dTEC']}\n")
+                        time_file.write(f"{current_time.toString('yyyy.MM.dd hh:mm:ss')}\t{g_data['dTEC']}\n")
 
     def get_lon_lat_dtec(self, out_dir):
         coord_file_name = f"{self.get_lon_lat_dtec_file_stem(out_dir)}.txt"
@@ -159,14 +198,17 @@ class GnssData:
             with open(coord_file_name, mode='r') as coord_file:
                 self.lon_lat_dtec = [list(map(float, line.split())) for line in coord_file]
         else:
+            self.current_time_value['time'] = self.time_values['start_time']
             self.lon_lat_dtec = []
             with open(coord_file_name, mode='w') as coord_file:
                 for line in self.data:
                     data = list(map(float, line.split()))
                     g_data = dict(zip(self.data_title, data))
-                    c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
-                    time_cond = ((c_time >= self.time_values['time'] - self.time_values['time_span'] / 2) and
-                                 (c_time <= self.time_values['time'] + self.time_values['time_span'] / 2))
+                    c_time = g_data['hour'] + g_data['min'] / 60. + g_data['sec'] / 3600.
+                    current_time = convert_to_hours(self.current_time_value['time'].time())
+                    time_span = convert_to_hours(self.time_values['time_span'])
+                    time_cond = ((c_time >= current_time - time_span / 2) and
+                                 (c_time <= current_time + time_span / 2))
                     if time_cond:
                         lon_lat_dtec_data = [g_data['gdlon'], g_data['gdlat'], g_data['dTEC']]
                         self.lon_lat_dtec.append(lon_lat_dtec_data)

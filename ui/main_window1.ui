@@ -521,8 +521,11 @@
              </item>
              <item>
               <widget class="QTabWidget" name="tabWidget_set_data">
+               <property name="contextMenuPolicy">
+                <enum>Qt::DefaultContextMenu</enum>
+               </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="tab_data_time">
                 <attribute name="title">
