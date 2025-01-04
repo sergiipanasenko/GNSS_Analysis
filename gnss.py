@@ -163,7 +163,7 @@ class GnssData:
                 self.data = in_file.readlines()
 
     def get_time_dtec(self, out_dir):
-        time_file_name = f"{self.get_time_dtec_file_stem(out_dir)}.txt"
+        time_file_name = f"{self.get_time_dtec_file_stem(out_dir)}_av.txt"
         if os.path.isfile(time_file_name):
             with open(time_file_name, mode='r') as time_file:
                 self.time_dtec = [list(map(float, line.split())) for line in time_file]
