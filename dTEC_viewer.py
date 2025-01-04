@@ -13,10 +13,11 @@ from matplotlib.cm import ScalarMappable
 from matplotlib import colormaps
 
 import math
-import time
 import os
 
 STAGES = ('Original', 'Without outliers', 'Interpolated', 'Bandpass filtered')
+
+DEFAULT_CMAP = 'rainbow'
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -45,6 +46,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.combo_region.setCurrentIndex(2)
         self.combo_projection.addItems(PROJECTIONS)
         self.combo_cmap.addItems(list(colormaps))
+        self.combo_cmap.setCurrentIndex(self.combo_cmap.findText(DEFAULT_CMAP))
         self.combo_stage.addItems(STAGES)
 
         min_date_time = QDateTime()
@@ -131,6 +133,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             self.update_time_value()
         elif self.tabWidget_set.currentIndex() == 2:
             self.plot_timestamp_data()
+            self.plot_coords_stamp_data()
 
     def update_coords(self):
         self.combo_region.setCurrentIndex(0)
@@ -168,12 +171,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.plot_receivers()
 
     def update_time_value(self):
-        self.limit_time['min_time'] = self.dt_xaxis_min
-        self.limit_time['max_time'] = self.dt_xaxis_max
+        self.limit_time['min_time'] = self.dt_xaxis_min.dateTime()
+        self.limit_time['max_time'] = self.dt_xaxis_max.dateTime()
         self.limit_time['min_dtec'] = self.dspin_yaxis_min
         self.limit_time['max_dtec'] = self.dspin_yaxis_max
-        min_time = self.set_time_in_hours(self.limit_time['min_time'])
-        max_time = self.set_time_in_hours(self.limit_time['max_time'])
+        min_time = convert_to_hours(self.limit_time['min_time'].time())
+        max_time = convert_to_hours(self.limit_time['max_time'].time())
         self.time_axes.set_xlim(min_time, max_time)
         self.time_axes.set_ylim(self.limit_time['min_dtec'].value(), self.limit_time['max_dtec'].value())
         # x_labs = self.time_axes.get_xticklabels()
@@ -197,6 +200,19 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         if file_name[0]:
             self.gnss_archive = GnssArchive(file_name[0])
             self.plot_receivers()
+            current_year = int(self.gnss_archive.get_year())
+            current_month = int(self.gnss_archive.get_month())
+            current_day = int(self.gnss_archive.get_day())
+            start_time = QDateTime(current_year, current_month, current_day, 0, 0, 0)
+            end_time = QDateTime(current_year, current_month, current_day, 23, 59, 59)
+            self.limit_time['min_time'] = start_time
+            self.limit_time['max_time'] = end_time
+            self.analyzed_time['start_time'] = start_time
+            self.analyzed_time['end_time'] = end_time
+            self.dt_xaxis_min.setDateTime(start_time)
+            self.dt_xaxis_max.setDateTime(end_time)
+            self.dt_data_time_start.setDateTime(start_time)
+            self.dt_data_time_end.setDateTime(end_time)
 
     def read_data(self):
         if self.gnss_archive is None:
@@ -206,6 +222,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             if not os.path.isfile(file_name):
                 raise FileNotFoundError(f"Parsed file f'{file_name}' is not exist.")
             self.gnss_data.read_gnss_data(file_name)
+
 
     def plot_timestamp_data(self):
         self.gnss_data.time_values['start_time'] = self.dt_data_time_start.dateTime()
@@ -270,13 +287,21 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             self.map_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
     def plot_coords_stamp_data(self):
+        self.gnss_data.coord_values['start_lon'] = GeoCoord(self.spin_lon_start_degs.value(),
+                                                            self.spin_lon_start_mins.value())
+        self.gnss_data.coord_values['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
+                                                           self.spin_lon_span_mins.value())
+        self.gnss_data.coord_values['start_lat'] = GeoCoord(self.spin_lat_start_degs.value(),
+                                                            self.spin_lat_start_mins.value())
+        self.gnss_data.coord_values['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
+                                                           self.spin_lat_span_mins.value())
         self.read_data()
         self.gnss_data.get_time_dtec(self.out_dir)
         self.update_time_value()
         time_value = []
         dtec_value = []
-        min_time = self.limit_time['min_time']
-        max_time = self.limit_time['max_time']
+        min_time = convert_to_hours(self.limit_time['min_time'].time())
+        max_time = convert_to_hours(self.limit_time['max_time'].time())
         time_span = 1 / 120
         n_time = math.ceil((max_time - min_time) / time_span)
         plot_time = [min_time + j * time_span for j in range(n_time)]

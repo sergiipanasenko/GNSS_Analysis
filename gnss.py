@@ -139,12 +139,12 @@ class GnssData:
     def get_time_dtec_file_stem(self, out_dir):
         dir_name = f"{out_dir}/{self.add_dir}/Map/1"
         os.makedirs(dir_name, exist_ok=True)
-        file_name = (f"{self.coord_values['lon'].degs}d"
-                     f"{self.coord_values['lon'].mins}m_"
+        file_name = (f"{self.coord_values['start_lon'].degs}d"
+                     f"{self.coord_values['start_lon'].mins}m_"
                      f"{self.coord_values['lon_span'].degs}d"
                      f"{self.coord_values['lon_span'].mins}m_lon_"
-                     f"{self.coord_values['lat'].degs}d"
-                     f"{self.coord_values['lat'].mins}m_"
+                     f"{self.coord_values['start_lat'].degs}d"
+                     f"{self.coord_values['start_lat'].mins}m_"
                      f"{self.coord_values['lat_span'].degs}d"
                      f"{self.coord_values['lat_span'].mins}m_lat")
         return f"{dir_name}/{file_name}"
@@ -154,7 +154,6 @@ class GnssData:
         os.makedirs(dir_name, exist_ok=True)
         file_name = (f"{self.time_values['start_time'].toString('hhmmss')}_"
                      f"{self.time_values['time_span'].toString('hhmmss')}")
-        print(file_name)
         return f"{dir_name}/{file_name}"
 
     def read_gnss_data(self, file_name):
@@ -188,7 +187,9 @@ class GnssData:
                         c_time = g_data['hour'] + g_data['min'] / 60 + g_data['sec'] / 3600
                         time_dtec_data = (c_time, g_data['dTEC'])
                         current_time.setDate(self.current_time_value['time'].date())
-                        current_time.setTime(QTime(g_data['hour'], g_data['min'], g_data['sec']))
+                        current_time.setTime(QTime(int(g_data['hour']),
+                                                   int(g_data['min']),
+                                                   int(g_data['sec'])))
                         self.time_dtec.append(time_dtec_data)
                         time_file.write(f"{current_time.toString('yyyy.MM.dd hh:mm:ss')}\t{g_data['dTEC']}\n")
 
