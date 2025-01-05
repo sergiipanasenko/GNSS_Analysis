@@ -7,16 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib import colormaps
 
-
-class GeoCoord:
-    def __init__(self, degs: int, mins: int, secs=0):
-        self.degs = degs
-        self.mins = mins
-        self.secs = secs
-
-    def get_float_degs(self) -> float:
-        return self.degs + self.mins / 60. + self.secs / 3600.
-
+from utils.geo.geo_coords import GeoCoord
 
 UA_COORDS = {'min_lat': GeoCoord(44, 0), 'max_lat': GeoCoord(52, 30),
              'min_lon': GeoCoord(22, 0), 'max_lon': GeoCoord(40, 30),
