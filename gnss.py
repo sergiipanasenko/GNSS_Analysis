@@ -162,7 +162,7 @@ class GnssData:
             with open(file_name, mode='r') as in_file:
                 self.data = in_file.readlines()
 
-    def get_time_dtec(self, out_dir, coord_values):
+    def get_time_dtec(self, out_dir, coord_values, current_date: dt.date):
         self.coord_values = coord_values
         time_file_name = f"{self.get_time_dtec_file_stem(out_dir)}.txt"
         time_format = '%Y.%m.%d %H:%M:%S'
@@ -172,7 +172,7 @@ class GnssData:
                 time_dtec = list(zip(*raw_data))
                 time_data = [dt.datetime.strptime(x, time_format) for x in time_dtec[0]]
                 dtec_data = list(map(float, time_dtec[1]))
-                self.time_dtec = list(map(list, zip(time_data, dtec_data)))
+                self.time_dtec = list(zip(time_data, dtec_data))
                 # self.time_dtec = [list(map(float, line.split())) for line in time_file]
         else:
             self.time_dtec = []
@@ -188,14 +188,11 @@ class GnssData:
                             g_data['gdlat'] <= current_lat + lat_span / 2,
                             g_data['gdlon'] >= current_lon - lon_span / 2,
                             g_data['gdlon'] <= current_lon + lon_span / 2)):
-                        c_time = dt.datetime(year=2000,
-                                             month=1,
-                                             day=1,
-                                             hour=int(g_data['hour']),
-                                             minute=int(g_data['min']),
-                                             second=int(g_data['sec']))
+                        c_time = dt.datetime.combine(current_date, dt.time(int(g_data['hour']),
+                                                                           int(g_data['min']),
+                                                                           int(g_data['sec'])))
                         current_time = c_time.strftime(time_format)
-                        time_dtec_data = (current_time, g_data['dTEC'])
+                        time_dtec_data = (c_time, g_data['dTEC'])
                         self.time_dtec.append(time_dtec_data)
                         time_file.write(f"{current_time}\t{g_data['dTEC']}\n")
 
@@ -211,15 +208,12 @@ class GnssData:
                 for line in self.data:
                     data = list(map(float, line.split()))
                     g_data = dict(zip(self.data_title, data))
-                    c_time = dt.datetime(year=2000,
-                                         month=1,
-                                         day=1,
-                                         hour=int(g_data['hour']),
-                                         minute=int(g_data['min']),
-                                         second=int(g_data['sec']))
-                    # c_time = g_data['hour'] + g_data['min'] / 60. + g_data['sec'] / 3600.
                     current_time = self.time_values['time']
                     time_span = self.time_values['time_span']
+                    c_time = dt.datetime.combine(current_time.date(),
+                                                 dt.time(int(g_data['hour']), int(g_data['min']), int(g_data['sec'])))
+                    # c_time = g_data['hour'] + g_data['min'] / 60. + g_data['sec'] / 3600.
+
                     time_cond = ((c_time >= current_time - time_span / 2) and
                                  (c_time <= current_time + time_span / 2))
                     if time_cond:

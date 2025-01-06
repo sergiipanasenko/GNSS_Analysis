@@ -1,8 +1,7 @@
-from PyQt5.QtCore import QDateTime, QDate, QTime
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QMainWindow, QFileDialog
 
-from gnss import GnssArchive, GnssData, convert_to_hours, convert_to_seconds
+from gnss import GnssArchive, GnssData, convert_to_hours
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS, PROJECTIONS
 from utils.geo.geo_coords import GeoCoord
 from ui.main_window1 import Ui_MainWindow
@@ -16,7 +15,6 @@ from matplotlib import colormaps
 import math
 import os
 import datetime as dt
-import time
 
 STAGES = ('Original', 'Without outliers', 'Interpolated', 'Bandpass filtered')
 
@@ -173,12 +171,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
     def update_time_value(self):
         self.limit_time['min_time'] = self.dt_xaxis_min.dateTime().toPyDateTime()
         self.limit_time['max_time'] = self.dt_xaxis_max.dateTime().toPyDateTime()
-        self.limit_time['min_dtec'] = self.dspin_yaxis_min
-        self.limit_time['max_dtec'] = self.dspin_yaxis_max
+        self.limit_time['min_dtec'] = self.dspin_yaxis_min.value()
+        self.limit_time['max_dtec'] = self.dspin_yaxis_max.value()
         min_time = convert_to_hours(self.limit_time['min_time'])
         max_time = convert_to_hours(self.limit_time['max_time'])
         self.time_axes.set_xlim(min_time, max_time)
-        self.time_axes.set_ylim(self.limit_time['min_dtec'].value(), self.limit_time['max_dtec'].value())
+        self.time_axes.set_ylim(self.limit_time['min_dtec'], self.limit_time['max_dtec'])
         # x_labs = self.time_axes.get_xticklabels()
         # x_labs[-1] = ''
         # self.time_axes.set_xticklabels(x_labs)
@@ -272,7 +270,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                                               edgecolor='none',
                                                               facecolor=c,
                                                               transform=ccrs.PlateCarree()))
-        current_time = self.gnss_data.time_values['time'].strftime("%Y-%m-%d\t%H:%M:%S")
+        current_time = self.gnss_data.time_values['time'].strftime("%Y-%m-%d   %H:%M:%S")
         title = f"{current_time} UT"
         # current_lat = float(self.lineEdit_12.text())
         # current_lon = float(self.lineEdit_13.text())
@@ -280,7 +278,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         #                         transform=ccrs.PlateCarree())
         # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
         #                          transform=ccrs.PlateCarree())
-        self.map_widget.canvas.figure.text(x=0.6, y=0.02, s=title,
+        self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
                                            family='Times New Roman', size=16)
         self.map_widget.canvas.draw()
         fig_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}.png"
@@ -297,8 +295,9 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                        self.spin_lat_start_mins.value())
         coord_values['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
                                             self.spin_lat_span_mins.value())
+        current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
         self.read_data()
-        self.gnss_data.get_time_dtec(self.out_dir, coord_values)
+        self.gnss_data.get_time_dtec(self.out_dir, coord_values, current_date)
         self.update_time_value()
         time_value = []
         dtec_value = []
@@ -318,13 +317,16 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                 time_value.append(c_time)
         with open(res_file_name, mode='w') as res_file:
             for line in list(zip(time_value, dtec_value)):
-                res_file.write(f"{line[0].strftime('%Y.%m.%s %H:%M:%S')}\t{line[1]}\n")
+                current_time_value = line[0].strftime('%Y.%m.%d %H:%M:%S')
+                current_dtec_value = line[1]
+                res_file.write(f"{current_time_value}\t{current_dtec_value}\n")
 
         for graph in self.time_widget.axes_map.graphs:
             graph.remove()
             self.time_widget.axes_map.graphs.remove(graph)
         # self.time_axes.clear()
-        graph = self.time_axes.scatter(time_value, dtec_value, s=0.8, color='blue')
+        x_time_value = list(map(convert_to_hours, time_value))
+        graph = self.time_axes.scatter(x_time_value, dtec_value, s=0.8, color='blue')
         self.time_widget.axes_map.graphs.append(graph)
         # self.update_time_value()
         self.time_widget.canvas.draw()
