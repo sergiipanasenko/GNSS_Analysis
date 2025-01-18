@@ -126,7 +126,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.gnss_archive = None
         self.gnss_data = GnssData()
 
-        self.filter_sec = 3600
+        self.filter_sec = 7200
         self.in_dir = 'results/in/EU'
         self.out_dir = 'results/out/EU'
         self.min_elm = 30
@@ -141,8 +141,10 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         elif self.tabWidget_set.currentIndex() == 1:
             self.update_time_value()
         elif self.tabWidget_set.currentIndex() == 2:
-            self.plot_timestamp_data()
+            self.plot_time_stamp_data()
             self.plot_coords_stamp_data()
+            self.plot_lat_time_data()
+            self.plot_lon_time_data()
 
     def update_coords(self):
         self.combo_region.setCurrentIndex(0)
@@ -232,7 +234,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                 raise FileNotFoundError(f"Parsed file f'{file_name}' is not exist.")
             self.gnss_data.read_gnss_data(file_name)
 
-    def plot_timestamp_data(self):
+    def plot_time_stamp_data(self):
         time_values = dict()
         time_values['time'] = self.dt_data_time_start.dateTime().toPyDateTime()
         time_values['time_span'] = dt.timedelta(hours=self.t_data_time_span.time().hour(),
@@ -346,9 +348,71 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         if not os.path.isfile(fig_file_name):
             self.time_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
+    def plot_lat_time_data(self):
+        coord_values = dict()
+        coord_values['lon'] = GeoCoord(self.spin_lon_start_degs.value(),
+                                       self.spin_lon_start_mins.value())
+        coord_values['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
+                                            self.spin_lon_span_mins.value())
+        current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
+        self.read_data()
+        self.gnss_data.get_lat_time_dtec(self.out_dir, coord_values, current_date)
+        self.update_coords()
+        self.update_time_value()
+        time_value = []
+        dtec_value = []
+        min_time = self.limit_time['min_time']
+        max_time = self.limit_time['max_time']
+        time_span = dt.timedelta(seconds=30)
+        x_time_span = 1 / 120
+        n_time = math.ceil((max_time - min_time) / time_span)
+        plot_time = [min_time + j * time_span for j in range(n_time)]
+        x_time_value = list(map(convert_to_hours, plot_time))
+        coords = self.map_widget.axes_map.coords
+        min_lat = coords['min_lat'].get_float_degs()
+        max_lat = coords['max_lat'].get_float_degs()
+        self.analyzed_coords['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
+                                                    self.spin_lat_span_mins.value())
+        lat_span = self.analyzed_coords['lat_span'].get_float_degs()
+        n_lat = math.ceil((max_lat - min_lat) / lat_span)
+        plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
+        self.map_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
+        cmap = self.map_color_bar.cmap
+        v_min = self.dspin_lat_time_min.value()
+        v_max = self.dspin_lat_time_max.value()
+        norm = Normalize(vmin=v_min, vmax=v_max)
+        self.map_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
+        res_file_name = f"{self.gnss_data.get_lat_time_dtec_file_stem(self.out_dir)}_av.txt"
+        with open(res_file_name, mode='w') as res_file:
+            for c_time in plot_time:
+                current_time = convert_to_hours(c_time)
+                time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2,
+                                        self.gnss_data.lat_time_dtec))
+                if time_data:
+                    for lat in plot_lat:
+                        lat_time_data = list(filter(lambda x: abs(x[0] - lat) <= lat_span / 2, time_data))
+                        if lat_time_data:
+                            lat_time_dtec = list(zip(*lat_time_data))[2]
+                            dtec_value = sum(lat_time_dtec) / len(lat_time_dtec)
+                            res_file.write(f"{current_time}\t{lat}\t{dtec_value}\n")
+                            c = self.map_color_bar.cmap(norm(dtec_value))
+                            self.keo_lat_axes.add_patch(Rectangle(xy=(current_time - x_time_span / 2,
+                                                                      lat - lat_span / 2),
+                                                                  width=x_time_span, height=lat_span,
+                                                                  edgecolor='none',
+                                                                  facecolor=c,
+                                                                  transform=ccrs.PlateCarree()))
+        self.keo_lat_widget.canvas.draw()
+        fig_file_name = f"{self.gnss_data.get_lat_time_dtec_file_stem(self.out_dir)}.png"
+        if not os.path.isfile(fig_file_name):
+            self.keo_lat_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
+
+    def plot_lon_time_data(self):
+        pass
+
     def update_figures(self):
         if self.gnss_archive:
             self.set_coords_time()
-            self.plot_timestamp_data()
+            self.plot_time_stamp_data()
             self.plot_coords_stamp_data()
             print("Figure updating is completed.")
