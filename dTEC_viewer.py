@@ -32,6 +32,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.map_axes = self.map_widget.canvas.figure.axes[0]
         self.map_cbar_axes = self.map_widget.canvas.figure.axes[1]
         self.map_color_bar = self.map_widget.axes_map.color_bar
+        self.keo_lat_axes = self.keo_lat_widget.canvas.figure.axes[0]
+        self.keo_lat_cbar_axes = self.keo_lat_widget.canvas.figure.axes[1]
+        self.keo_lat_color_bar = self.keo_lat_widget.axes_map.color_bar
+        self.keo_lon_axes = self.keo_lon_widget.canvas.figure.axes[0]
+        self.keo_lon_cbar_axes = self.keo_lon_widget.canvas.figure.axes[1]
+        self.keo_lon_color_bar = self.keo_lon_widget.axes_map.color_bar
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
 
         # centering
@@ -69,6 +75,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         float_max_timw = convert_to_hours(max_date_time)
         self.time_axes.set_xlim((float_min_timw, float_max_timw))
         self.time_axes.set_ylim((self.limit_time['min_dtec'], self.limit_time['max_dtec']))
+        self.keo_lat_axes.set_xlim((float_min_timw, float_max_timw))
+        self.keo_lon_axes.set_xlim((float_min_timw, float_max_timw))
         self.dspin_yaxis_min.setValue(self.limit_time['min_dtec'])
         self.dspin_yaxis_max.setValue(self.limit_time['max_dtec'])
         self.dspin_lat_lon_min.setValue(self.limit_map_dtec['min_dtec'])
@@ -95,6 +103,9 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.spin_centrlat_mins.setValue(map_lim['central_lat'].mins)
         self.spin_centrlon_mins.setValue(map_lim['central_long'].mins)
 
+        self.keo_lat_axes.set_ylim((map_lim['min_lat'].degs, map_lim['max_lat'].degs))
+        self.keo_lon_axes.set_ylim((map_lim['min_lon'].degs, map_lim['max_lon'].degs))
+
         self.spin_lat_start_degs.setValue(self.analyzed_coords['start_lat'].degs)
         self.spin_lat_start_mins.setValue(self.analyzed_coords['start_lat'].mins)
         self.spin_lat_end_degs.setValue(self.analyzed_coords['end_lat'].degs)
@@ -115,7 +126,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.gnss_archive = None
         self.gnss_data = GnssData()
 
-        self.filter_sec = 7200
+        self.filter_sec = 3600
         self.in_dir = 'results/in/EU'
         self.out_dir = 'results/out/EU'
         self.min_elm = 30

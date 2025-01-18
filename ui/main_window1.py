@@ -29,6 +29,7 @@ class Ui_MainWindow(object):
                                      axes_map=t_map)
         self.time_widget.setObjectName("time_widget")
         self.gridLayout.addWidget(self.time_widget, 1, 1, 1, 1)
+
         r_label_params = DEFAULT_MAP_PARAMS | {'frame_on': False}
         r_grid_params = DEFAULT_GRID_PARAMS | {'draw_labels': False}
         r_map = GeoAxesMap(label_params=r_label_params, grid_params=r_grid_params)
@@ -617,7 +618,13 @@ class Ui_MainWindow(object):
         self.tab_keogram_lat.setObjectName("tab_keogram_lat")
         self.verticalLayout_12 = QtWidgets.QVBoxLayout(self.tab_keogram_lat)
         self.verticalLayout_12.setObjectName("verticalLayout_12")
-        self.keo_lat_widget = QtWidgets.QWidget(self.tab_keogram_lat)
+        # self.keo_lat_widget = QtWidgets.QWidget(self.tab_keogram_lat)
+        lat_label_params = {'x_label': 'UT', 'y_label': 'Latitude (deg)', 'x_label_coords': (0.97, -0.01)}
+        keo_lat_map = AxesMap(tick_params=t_tick_params, is_cbar=True, figure_params={'pad': 0.8},
+                              label_params=lat_label_params)
+        self.keo_lat_widget = MplWidget(parent=self.centralwidget,
+                                        axes_map=keo_lat_map)
+        self.keo_lat_widget.setSizePolicy(sizePolicy)
         self.keo_lat_widget.setObjectName("keo_lat_widget")
         self.verticalLayout_12.addWidget(self.keo_lat_widget)
         self.tabWidget_graph.addTab(self.tab_keogram_lat, "")
@@ -625,7 +632,13 @@ class Ui_MainWindow(object):
         self.tab_keogram_lon.setObjectName("tab_keogram_lon")
         self.verticalLayout_13 = QtWidgets.QVBoxLayout(self.tab_keogram_lon)
         self.verticalLayout_13.setObjectName("verticalLayout_13")
-        self.keo_lon_widget = QtWidgets.QWidget(self.tab_keogram_lon)
+        # self.keo_lon_widget = QtWidgets.QWidget(self.tab_keogram_lon)
+        lon_label_params = {'x_label': 'UT', 'y_label': 'Longitude (deg)', 'x_label_coords': (0.97, -0.01)}
+        keo_lon_map = AxesMap(tick_params=t_tick_params, is_cbar=True, figure_params={'pad': 0.8},
+                              label_params=lon_label_params)
+        self.keo_lon_widget = MplWidget(parent=self.centralwidget,
+                                        axes_map=keo_lon_map)
+        self.keo_lon_widget.setSizePolicy(sizePolicy)
         self.keo_lon_widget.setObjectName("keo_lon_widget")
         self.verticalLayout_13.addWidget(self.keo_lon_widget)
         self.tabWidget_graph.addTab(self.tab_keogram_lon, "")
@@ -683,8 +696,8 @@ class Ui_MainWindow(object):
         self.label_centrlon.setText(_translate("MainWindow", "Centr. lon."))
         self.tabWidget_set.setTabText(self.tabWidget_set.indexOf(self.tab_space), _translate("MainWindow", "Space"))
         self.label_xaxis.setText(_translate("MainWindow", "X Axis"))
-        self.dt_xaxis_min.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm"))
-        self.dt_xaxis_max.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm"))
+        self.dt_xaxis_min.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm:ss"))
+        self.dt_xaxis_max.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm:ss"))
         self.label_xaxis_min.setText(_translate("MainWindow", "Min"))
         self.label_xaxis_max.setText(_translate("MainWindow", "Max"))
         self.label_yaxis.setText(_translate("MainWindow", "Y Axis"))
@@ -696,8 +709,8 @@ class Ui_MainWindow(object):
         self.label_data_time_step.setText(_translate("MainWindow", "Step"))
         self.label_data_time_span.setText(_translate("MainWindow", "Span"))
         self.label_data_time_start.setText(_translate("MainWindow", "Start"))
-        self.dt_data_time_start.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm"))
-        self.dt_data_time_end.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm"))
+        self.dt_data_time_start.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm:ss"))
+        self.dt_data_time_end.setDisplayFormat(_translate("MainWindow", "dd.MM.yyyy hh:mm:ss"))
         self.t_data_time_span.setDisplayFormat(_translate("MainWindow", "hh:mm:ss"))
         self.t_data_time_step.setDisplayFormat(_translate("MainWindow", "hh:mm:ss"))
         self.tabWidget_set_data.setTabText(self.tabWidget_set_data.indexOf(self.tab_data_time),
