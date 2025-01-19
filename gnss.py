@@ -291,7 +291,7 @@ class GnssData:
                     data = list(map(float, line.split()))
                     g_data = dict(zip(self.data_title, data))
                     if all((g_data['gdlon'] >= current_lon - lon_span / 2,
-                            g_data['gdlat'] <= current_lon + lon_span / 2)):
+                            g_data['gdlon'] <= current_lon + lon_span / 2)):
                         c_time = dt.datetime.combine(current_date, dt.time(int(g_data['hour']),
                                                                            int(g_data['min']),
                                                                            int(g_data['sec'])))
