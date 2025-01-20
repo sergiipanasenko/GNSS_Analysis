@@ -29,7 +29,7 @@ DEFAULT_GRID_PARAMS = {'grid_width': 0.2, 'draw_labels': True}
 DEFAULT_MAP_PARAMS = {'size': 18, 'color': 'black',
                       'family': 'Times New Roman',
                       'frame_on': True}
-DEFAULT_CBAR_PARAMS = {'size': 16, 'color': 'black',
+DEFAULT_CBAR_PARAMS = {'size': 18, 'color': 'black',
                        'family': 'Times New Roman',
                        'title_pad': 18.0, 'title': 'dTEC (TECU)'}
 

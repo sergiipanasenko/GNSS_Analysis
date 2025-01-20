@@ -3,7 +3,7 @@ from matplotlib.cm import ScalarMappable
 
 from ui.cartopy_figure import DEFAULT_CBAR_PARAMS
 
-DEFAULT_TICK_PARAMS = {'font_size': 18, 'font_weight': 'normal',
+DEFAULT_TICK_PARAMS = {'font_size': 20, 'font_weight': 'normal',
                        'family': 'Times New Roman', 'direction': 'in'}
 
 DEFAULT_FIGURE_PARAMS = {'pad': 3}
