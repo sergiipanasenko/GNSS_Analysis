@@ -14,6 +14,8 @@ from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAM
 from ui.mpl_figure import DEFAULT_TICK_PARAMS, AxesMap
 from ui.qt_utils import MplWidget
 
+AXES_RATIO = 0.5
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -621,7 +623,8 @@ class Ui_MainWindow(object):
         # self.keo_lat_widget = QtWidgets.QWidget(self.tab_keogram_lat)
         lat_label_params = {'x_label': 'UT', 'y_label': 'Latitude (deg)', 'x_label_coords': (0.97, -0.01)}
         keo_lat_map = AxesMap(tick_params=t_tick_params, is_cbar=True, figure_params={'pad': 0.8},
-                              label_params=lat_label_params)
+                              label_params=lat_label_params, axes_ratio=AXES_RATIO, cbar_orient='horizontal',
+                              cbar_title_loc=0.2)
         self.keo_lat_widget = MplWidget(parent=self.centralwidget,
                                         axes_map=keo_lat_map)
         self.keo_lat_widget.setSizePolicy(sizePolicy)
@@ -635,7 +638,8 @@ class Ui_MainWindow(object):
         # self.keo_lon_widget = QtWidgets.QWidget(self.tab_keogram_lon)
         lon_label_params = {'x_label': 'UT', 'y_label': 'Longitude (deg)', 'x_label_coords': (0.97, -0.01)}
         keo_lon_map = AxesMap(tick_params=t_tick_params, is_cbar=True, figure_params={'pad': 0.8},
-                              label_params=lon_label_params)
+                              label_params=lon_label_params, axes_ratio=AXES_RATIO, cbar_orient='horizontal',
+                              cbar_title_loc=0.2)
         self.keo_lon_widget = MplWidget(parent=self.centralwidget,
                                         axes_map=keo_lon_map)
         self.keo_lon_widget.setSizePolicy(sizePolicy)

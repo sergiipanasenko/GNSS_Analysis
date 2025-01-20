@@ -74,7 +74,7 @@ class GeoAxesMap:
     def __init__(self, shp_file_name=None, coords=None,
                  shp_params=None, grid_params=None,
                  label_params=None, is_cbar=False,
-                 cbar_params=None):
+                 cbar_params=None, cbar_orient='vertical'):
         self.coords = EU_COORDS.copy() if coords is None else coords.copy()
         self.shp_params = DEFAULT_SHP_PARAMS.copy() if shp_params is None \
             else shp_params.copy()
@@ -87,6 +87,7 @@ class GeoAxesMap:
         self.shp_file_name = shp_file_name
         self.is_cbar = is_cbar
         self.color_bar = None
+        self.cbar_orient = cbar_orient
         self.figure = None
         self.polygons = []
 
@@ -127,7 +128,7 @@ class GeoAxesMap:
             # cmap = colormaps['viridis']
             cmap = colormaps['rainbow']
             self.color_bar = plt.colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), pad=0.2,
-                                          orientation='vertical', alpha=0, ax=ax, shrink=0.95,
+                                          orientation=self.cbar_orient, alpha=0, ax=ax, shrink=0.95,
                                           fraction=0.05, aspect=30, ticks=[-1, -0.5, 0, 0.5, 1])
             self.color_bar.ax.tick_params(labelsize=self.cbar_params['size'],
                                           labelfontfamily=self.cbar_params['family'],
