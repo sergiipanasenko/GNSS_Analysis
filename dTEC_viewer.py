@@ -19,6 +19,7 @@ import datetime as dt
 STAGES = ('Original', 'Without outliers', 'Interpolated', 'Bandpass filtered')
 
 DEFAULT_CMAP = 'rainbow'
+LIMIT_DTEC = 1
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -135,6 +136,12 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.push_update.clicked.connect(self.update_data)
         self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
 
+    def dtec_corr(self, val):
+        if abs(val) < LIMIT_DTEC:
+            return val
+        else:
+            return 0.0
+
     def update_data(self):
         if self.tabWidget_set.currentIndex() == 0:
             self.update_coords()
@@ -150,6 +157,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.combo_region.setCurrentIndex(0)
         min_lat = GeoCoord(self.spin_minlat_degs.value(), self.spin_minlat_mins.value())
         max_lat = GeoCoord(self.spin_maxlat_degs.value(), self.spin_maxlat_mins.value())
+        min_lon = GeoCoord(self.spin_minlon_degs.value(), self.spin_minlon_mins.value())
         min_lon = GeoCoord(self.spin_minlon_degs.value(), self.spin_minlon_mins.value())
         max_lon = GeoCoord(self.spin_maxlon_degs.value(), self.spin_maxlon_mins.value())
         centr_lat = GeoCoord(self.spin_centrlat_degs.value(), self.spin_centrlat_mins.value())
@@ -240,49 +248,68 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         time_values['time_span'] = dt.timedelta(hours=self.t_data_time_span.time().hour(),
                                                 minutes=self.t_data_time_span.time().minute(),
                                                 seconds=self.t_data_time_span.time().second())
-        self.read_data()
-        self.gnss_data.get_lon_lat_dtec(self.out_dir, time_values)
+        self.gnss_data.time_values = time_values
+        file_name = f"{self.gnss_archive.get_parsed_file_stem(self.in_dir, self.filter_sec)}.txt"
+        self.gnss_data.add_dir = '/'.join(file_name.split('/')[-4:-1])
         self.update_coords()
-        coords = self.map_widget.axes_map.coords
-        min_lat = coords['min_lat'].get_float_degs()
-        max_lat = coords['max_lat'].get_float_degs()
-        min_lon = coords['min_lon'].get_float_degs()
-        max_lon = coords['max_lon'].get_float_degs()
-        self.analyzed_coords['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
-                                                    self.spin_lat_span_mins.value())
-        self.analyzed_coords['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
-                                                    self.spin_lon_span_mins.value())
-        lat_span = self.analyzed_coords['lat_span'].get_float_degs()
-        lon_span = self.analyzed_coords['lon_span'].get_float_degs()
-        n_lat = math.ceil((max_lat - min_lat) / lat_span)
-        plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
+        time_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}_av.txt"
         self.map_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
         cmap = self.map_color_bar.cmap
         v_min = self.dspin_lat_lon_min.value()
         v_max = self.dspin_lat_lon_max.value()
         norm = Normalize(vmin=v_min, vmax=v_max)
         self.map_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
-        res_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}_av.txt"
-        with open(res_file_name, mode='w') as res_file:
-            for lat in plot_lat:
-                lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2,
-                                       self.gnss_data.lon_lat_dtec))
-                if lat_data:
-                    corr_lon_span = lon_span / math.cos(math.radians(lat))
-                    n_lon = math.ceil((max_lon - min_lon) / corr_lon_span)
-                    plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
-                    for lon in plot_lon:
-                        lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
-                        if lat_lon_data:
-                            lat_lon_dtec = list(zip(*lat_lon_data))[2]
-                            dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
-                            res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
-                            c = self.map_color_bar.cmap(norm(dtec_value))
-                            self.map_axes.add_patch(Rectangle(xy=(lon - corr_lon_span / 2, lat - lat_span / 2),
-                                                              width=corr_lon_span, height=lat_span,
-                                                              edgecolor='none',
-                                                              facecolor=c,
-                                                              transform=ccrs.PlateCarree()))
+        self.analyzed_coords['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
+                                                    self.spin_lat_span_mins.value())
+        lat_span = self.analyzed_coords['lat_span'].get_float_degs()
+        self.analyzed_coords['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
+                                                    self.spin_lon_span_mins.value())
+        lon_span = self.analyzed_coords['lon_span'].get_float_degs()
+        if os.path.isfile(time_file_name):
+            with open(time_file_name, mode='r') as res_file:
+                raw_data = [line.split('\t') for line in res_file]
+                for data in raw_data:
+                    lon_value = float(data[0])
+                    lat_value = float(data[1])
+                    dtec_value = float(data[2])
+                    corr_lon_span = lon_span / math.cos(math.radians(lat_value))
+                    c = self.map_color_bar.cmap(norm(dtec_value))
+                    self.map_axes.add_patch(Rectangle(xy=(lon_value - corr_lon_span / 2, lat_value - lat_span / 2),
+                                                      width=corr_lon_span, height=lat_span,
+                                                      edgecolor='none',
+                                                      facecolor=c,
+                                                      transform=ccrs.PlateCarree()))
+        else:
+            self.read_data()
+            self.gnss_data.get_lon_lat_dtec(self.out_dir, time_values)
+            coords = self.map_widget.axes_map.coords
+            min_lat = coords['min_lat'].get_float_degs()
+            max_lat = coords['max_lat'].get_float_degs()
+            min_lon = coords['min_lon'].get_float_degs()
+            max_lon = coords['max_lon'].get_float_degs()
+            n_lat = math.ceil((max_lat - min_lat) / lat_span)
+            plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
+            with open(time_file_name, mode='w') as res_file:
+                for lat in plot_lat:
+                    lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2,
+                                           self.gnss_data.lon_lat_dtec))
+                    if lat_data:
+                        corr_lon_span = lon_span / math.cos(math.radians(lat))
+                        n_lon = math.ceil((max_lon - min_lon) / corr_lon_span)
+                        plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
+                        for lon in plot_lon:
+                            lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
+                            if lat_lon_data:
+                                lat_lon_dtec_raw = list(zip(*lat_lon_data))[2]
+                                lat_lon_dtec = list(map(self.dtec_corr, lat_lon_dtec_raw))
+                                dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
+                                res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
+                                c = self.map_color_bar.cmap(norm(dtec_value))
+                                self.map_axes.add_patch(Rectangle(xy=(lon - corr_lon_span / 2, lat - lat_span / 2),
+                                                                  width=corr_lon_span, height=lat_span,
+                                                                  edgecolor='none',
+                                                                  facecolor=c,
+                                                                  transform=ccrs.PlateCarree()))
         current_time = self.gnss_data.time_values['time'].strftime("%Y-%m-%d   %H:%M:%S")
         title = f"{current_time} UT"
         # current_lat = float(self.lineEdit_12.text())
@@ -295,8 +322,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                            family='Times New Roman', size=16)
         self.map_widget.canvas.draw()
         fig_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}.png"
-        if not os.path.isfile(fig_file_name):
-            self.map_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
+        # if not os.path.isfile(fig_file_name):
+        self.map_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
     def plot_coords_stamp_data(self):
         coord_values = dict()
@@ -308,32 +335,42 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                        self.spin_lat_start_mins.value())
         coord_values['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
                                             self.spin_lat_span_mins.value())
-        current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
-        self.read_data()
-        self.gnss_data.get_time_dtec(self.out_dir, coord_values, current_date)
-        self.update_time_value()
+        self.gnss_data.coord_values = coord_values
+        file_name = f"{self.gnss_archive.get_parsed_file_stem(self.in_dir, self.filter_sec)}.txt"
+        self.gnss_data.add_dir = '/'.join(file_name.split('/')[-4:-1])
+        coord_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}_av.txt"
         time_value = []
         dtec_value = []
-        min_time = self.limit_time['min_time']
-        max_time = self.limit_time['max_time']
-        time_span = dt.timedelta(seconds=30)
-        n_time = math.ceil((max_time - min_time) / time_span)
-        plot_time = [min_time + j * time_span for j in range(n_time)]
-        res_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}_av.txt"
-        for c_time in plot_time:
-            time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2,
-                                    self.gnss_data.time_dtec))
-            if time_data:
-                time_dtec = list(zip(*time_data))[1]
-                c_dtec = sum(time_dtec) / len(time_dtec)
-                dtec_value.append(c_dtec)
-                time_value.append(c_time)
-        with open(res_file_name, mode='w') as res_file:
-            for line in list(zip(time_value, dtec_value)):
-                current_time_value = line[0].strftime('%Y.%m.%d %H:%M:%S')
-                current_dtec_value = line[1]
-                res_file.write(f"{current_time_value}\t{current_dtec_value}\n")
-
+        if os.path.isfile(coord_file_name):
+            with open(coord_file_name, mode='r') as res_file:
+                raw_data = [line.split('\t') for line in res_file]
+                data = list(zip(*raw_data))
+                time_value = [dt.datetime.strptime(x, TIME_FORMAT) for x in data[0]]
+                dtec_value = list(map(float, data[1]))
+        else:
+            current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
+            self.read_data()
+            self.gnss_data.get_time_dtec(self.out_dir, coord_values, current_date)
+            self.update_time_value()
+            min_time = self.limit_time['min_time']
+            max_time = self.limit_time['max_time']
+            time_span = dt.timedelta(seconds=30)
+            n_time = math.ceil((max_time - min_time) / time_span)
+            plot_time = [min_time + j * time_span for j in range(n_time)]
+            for c_time in plot_time:
+                time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2,
+                                        self.gnss_data.time_dtec))
+                if time_data:
+                    time_dtec_raw = list(zip(*time_data))[1]
+                    time_dtec = list(map(self.dtec_corr, time_dtec_raw))
+                    c_dtec = sum(time_dtec) / len(time_dtec)
+                    dtec_value.append(c_dtec)
+                    time_value.append(c_time)
+            with open(coord_file_name, mode='w') as res_file:
+                for line in list(zip(time_value, dtec_value)):
+                    current_time_value = line[0].strftime('%Y.%m.%d %H:%M:%S')
+                    current_dtec_value = line[1]
+                    res_file.write(f"{current_time_value}\t{current_dtec_value}\n")
         for graph in self.time_widget.axes_map.graphs:
             graph.remove()
             self.time_widget.axes_map.graphs.remove(graph)
@@ -345,11 +382,17 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.time_widget.canvas.draw()
         fig_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}.png"
 
-        if not os.path.isfile(fig_file_name):
-            self.time_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
+        # if not os.path.isfile(fig_file_name):
+        self.time_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
     def plot_lat_time_data(self):
         self.update_time_value()
+        coord_values = dict()
+        coord_values['lon'] = GeoCoord(self.spin_lon_start_degs.value(),
+                                       self.spin_lon_start_mins.value())
+        coord_values['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
+                                            self.spin_lon_span_mins.value())
+        self.gnss_data.coord_values = coord_values
         lat_file_name = f"{self.gnss_data.get_lat_time_dtec_file_stem(self.out_dir)}_av.txt"
         self.keo_lat_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
         cmap = self.keo_lat_color_bar.cmap
@@ -376,11 +419,6 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                                           edgecolor='none',
                                                           facecolor=c))
         else:
-            coord_values = dict()
-            coord_values['lon'] = GeoCoord(self.spin_lon_start_degs.value(),
-                                           self.spin_lon_start_mins.value())
-            coord_values['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
-                                                self.spin_lon_span_mins.value())
             current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
             self.read_data()
             self.gnss_data.get_lat_time_dtec(self.out_dir, coord_values, current_date)
@@ -402,7 +440,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                         for lat in plot_lat:
                             lat_time_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2, time_data))
                             if lat_time_data:
-                                lat_time_dtec = list(zip(*lat_time_data))[2]
+                                lat_time_dtec_raw = list(zip(*lat_time_data))[2]
+                                lat_time_dtec = list(map(self.dtec_corr, lat_time_dtec_raw))
                                 dtec_value = sum(lat_time_dtec) / len(lat_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lat}\t{dtec_value}\n")
                                 c = self.keo_lat_color_bar.cmap(norm(dtec_value))
@@ -418,12 +457,13 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
 
     def plot_lon_time_data(self):
         self.update_time_value()
-        lon_file_name = f"{self.gnss_data.get_lon_time_dtec_file_stem(self.out_dir)}_av.txt"
         coord_values = dict()
         coord_values['lat'] = GeoCoord(self.spin_lat_start_degs.value(),
                                        self.spin_lat_start_mins.value())
         coord_values['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
                                             self.spin_lat_span_mins.value())
+        self.gnss_data.coord_values = coord_values
+        lon_file_name = f"{self.gnss_data.get_lon_time_dtec_file_stem(self.out_dir)}_av.txt"
         self.keo_lon_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
         cmap = self.keo_lon_color_bar.cmap
         v_min = self.dspin_lon_time_min.value()
@@ -473,7 +513,8 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                         for lon in plot_lon:
                             lon_time_data = list(filter(lambda x: abs(x[1] - lon) <= corr_lon_span / 2, time_data))
                             if lon_time_data:
-                                lon_time_dtec = list(zip(*lon_time_data))[2]
+                                lon_time_dtec_raw = list(zip(*lon_time_data))[2]
+                                lon_time_dtec = list(map(self.dtec_corr, lon_time_dtec_raw))
                                 dtec_value = sum(lon_time_dtec) / len(lon_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lon}\t{dtec_value}\n")
                                 c = self.keo_lon_color_bar.cmap(norm(dtec_value))

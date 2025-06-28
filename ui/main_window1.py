@@ -621,7 +621,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_12 = QtWidgets.QVBoxLayout(self.tab_keogram_lat)
         self.verticalLayout_12.setObjectName("verticalLayout_12")
         # self.keo_lat_widget = QtWidgets.QWidget(self.tab_keogram_lat)
-        lat_label_params = {'x_label': 'UT', 'y_label': 'Latitude (deg)', 'x_label_coords': (0.97, -0.01)}
+        lat_label_params = {'x_label': 'UT', 'y_label': 'Latitude (deg)', 'x_label_coords': (0.97, -0.012)}
         keo_lat_map = AxesMap(tick_params=t_tick_params, is_cbar=True, figure_params={'pad': 0.8},
                               label_params=lat_label_params, axes_ratio=AXES_RATIO, cbar_orient='horizontal',
                               cbar_title_loc=0.2)
@@ -636,7 +636,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_13 = QtWidgets.QVBoxLayout(self.tab_keogram_lon)
         self.verticalLayout_13.setObjectName("verticalLayout_13")
         # self.keo_lon_widget = QtWidgets.QWidget(self.tab_keogram_lon)
-        lon_label_params = {'x_label': 'UT', 'y_label': 'Longitude (deg)', 'x_label_coords': (0.97, -0.01)}
+        lon_label_params = {'x_label': 'UT', 'y_label': 'Longitude (deg)', 'x_label_coords': (0.97, -0.012)}
         keo_lon_map = AxesMap(tick_params=t_tick_params, is_cbar=True, figure_params={'pad': 0.8},
                               label_params=lon_label_params, axes_ratio=AXES_RATIO, cbar_orient='horizontal',
                               cbar_title_loc=0.2)
