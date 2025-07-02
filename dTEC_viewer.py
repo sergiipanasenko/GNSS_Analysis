@@ -63,11 +63,11 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.limit_map_dtec = {'min_dtec': -0.5, 'max_dtec': 0.5}
         self.limit_time = {'min_time': min_date_time, 'max_time': max_date_time,
                            'min_dtec': -1.0, 'max_dtec': 1.0}
-        self.analyzed_coords = {"start_lon": GeoCoord(46, 46, 34),
-                                'end_lon': GeoCoord(46, 46, 34),
+        self.analyzed_coords = {"start_lon": GeoCoord(33, 22, 18),
+                                'end_lon': GeoCoord(33, 22, 18),
                                 'lon_span': GeoCoord(0, 45),
-                                'start_lat': GeoCoord(33, 22, 18),
-                                'end_lat': GeoCoord(33, 22, 18),
+                                'start_lat': GeoCoord(46, 46, 34),
+                                'end_lat': GeoCoord(46, 46, 34),
                                 'lat_span': GeoCoord(0, 45)}
         self.analyzed_time = {'start_time': current_date_time,
                               'end_time': current_date_time,
