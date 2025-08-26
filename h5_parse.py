@@ -226,7 +226,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input_path", help="Path to the local h5 files in format path/to/the/files.", type=str,
                         default="c:/Users/Sergii/Dell_D/GNSS/Raw/")
     parser.add_argument("-o","--output_path", help="Path for output files in format path/to/the/files.", type=str,
-                        default="results/test/")
+                        default="results/in/")
     parser.add_argument("-w", "--window", help="Window length (in seconds) for data analysis.",
                         default=7200, type=int)
     parser.add_argument("-f", "--filter_order", help="Savitzky - Golay filter order.",
