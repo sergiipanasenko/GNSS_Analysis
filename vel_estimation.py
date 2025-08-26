@@ -22,8 +22,8 @@ if __name__ == '__main__':
     c_lon = GeoCoord(10, 0)
     c_lat_float = c_lat.degs + c_lat.mins / 60.
     c_lon_float = c_lon.degs + c_lon.mins / 60.
-    lat_num = 2
-    lon_num = 1
+    lat_num = 6
+    lon_num = 3
     resol_lat = GeoCoord(0, 45)
     resol_lon = GeoCoord(0, 45)
     time_start = datetime.datetime(year, month, day, hour_start, min_start)
@@ -71,7 +71,11 @@ if __name__ == '__main__':
                                              c_lat_float, coords_lat[cur_lon_index - lon_num])
     vel_abs, vel_azm = estimate_phase_velocity((dist_lat, azm_lat, lat_max_num * 30),
                                                (dist_lon, azm_lon, lon_max_num * 30))
+    print(coords_lon[cur_lat_index - lat_num], coords_lon[cur_lat_index + lat_num])
+    print(coords_lat[cur_lon_index - lon_num], coords_lat[cur_lon_index + lon_num])
     print(lat_max_num, lon_max_num)
     print(vel_abs * 1000, vel_azm)
+    plt.grid()
     plt.plot(lat_lags, lat_corr)
+    plt.plot(lon_lags, lon_corr)
     plt.show()
