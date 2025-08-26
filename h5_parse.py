@@ -36,6 +36,14 @@ def create_file_names(date: dt.date) -> tuple[str, str]:
     return tec_file_name, site_file_name
 
 
+def check_prepare_file(date: dt.date, input_file_path: str):
+    if not os.path.isfile(input_file_path):
+        input_file = input_file_path.split('/')[-1]
+        logging.info(f"File {input_file} was not found.")
+        logging.info(f"Start downloading {input_file} from Madrigal database")
+        madrigal.download_hdf5(date, input_file, input_file_path)
+
+
 def retrieve_receivers(file_path: str, borders=None):
     if borders is None:
         borders = EU_BORDERS
@@ -107,14 +115,8 @@ def analyze_gnss_data(input_path, output_path, date_str, window, filter_order,
     output_file = f"{date_dir}_{window}.txt"
     output_site_file = "Sites.txt"
     os.makedirs(output_dir, exist_ok=True)
-    if not os.path.isfile(site_file_path):
-        logging.info(f"File {site_file} was not found.")
-        logging.info("Start downloading it from Madrigal database")
-        madrigal.download_hdf5(date, site_file, site_file_path)
-    if not os.path.isfile(data_file_path):
-        logging.info(f"File {data_file} was not found.")
-        logging.info("Start downloading it from Madrigal database")
-        madrigal.download_hdf5(date, data_file, data_file_path)
+    check_prepare_file(date, site_file_path)
+    check_prepare_file(date, data_file_path)
     sites = retrieve_receivers(site_file_path)
     with open(output_dir + output_site_file, mode='w') as f_site:
         f_site.write('site\tlat\tlon\n')
