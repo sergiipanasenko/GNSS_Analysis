@@ -1,7 +1,9 @@
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QMainWindow, QFileDialog
 
-from gnss import GnssArchive, GnssData, convert_to_hours, TIME_FORMAT
+from dTEC import dtec_corr
+from gnss import GnssArchive, GnssDataParser, TIME_FORMAT
+from utils.time import convert_to_hours
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS, PROJECTIONS
 from utils.geo.geo_coords import GeoCoord
 from ui.main_window1 import Ui_MainWindow
@@ -14,12 +16,14 @@ from matplotlib import colormaps
 
 import math
 import os
+import array
 import datetime as dt
 
+OUTPUT_DIR = 'results/out/'
+INPUT_DIR = 'results/in'
+RECEIVER_FILE = 'Sites.txt'
 STAGES = ('Original', 'Without outliers', 'Interpolated', 'Bandpass filtered')
-
 DEFAULT_CMAP = 'rainbow'
-LIMIT_DTEC = 1
 
 
 class DTECViewerForm(QMainWindow, Ui_MainWindow):
@@ -124,23 +128,16 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.spin_lon_span_degs.setValue(self.analyzed_coords['lon_span'].degs)
         self.spin_lon_span_mins.setValue(self.analyzed_coords['lon_span'].mins)
 
-        self.gnss_archive = None
-        self.gnss_data = GnssData()
+        self.gnss_data = GnssDataParser()
+        self.input_data_file = None
+        self.receiver_file = None
 
         self.filter_sec = 7200
-        self.in_dir = 'results/in/EU'
-        self.out_dir = 'results/out/EU'
         self.min_elm = 30
 
         # connections
         self.push_update.clicked.connect(self.update_data)
-        self.actionOpen.triggered.connect(self.choose_gnss_data_archive)
-
-    def dtec_corr(self, val):
-        if abs(val) < LIMIT_DTEC:
-            return val
-        else:
-            return 0.0
+        self.actionOpen.triggered.connect(self.choose_input_data_dir)
 
     def update_data(self):
         if self.tabWidget_set.currentIndex() == 0:
@@ -157,7 +154,6 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.combo_region.setCurrentIndex(0)
         min_lat = GeoCoord(self.spin_minlat_degs.value(), self.spin_minlat_mins.value())
         max_lat = GeoCoord(self.spin_maxlat_degs.value(), self.spin_maxlat_mins.value())
-        min_lon = GeoCoord(self.spin_minlon_degs.value(), self.spin_minlon_mins.value())
         min_lon = GeoCoord(self.spin_minlon_degs.value(), self.spin_minlon_mins.value())
         max_lon = GeoCoord(self.spin_maxlon_degs.value(), self.spin_maxlon_mins.value())
         centr_lat = GeoCoord(self.spin_centrlat_degs.value(), self.spin_centrlat_mins.value())
@@ -198,30 +194,36 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         max_time = convert_to_hours(self.limit_time['max_time'])
         self.time_axes.set_xlim(min_time, max_time)
         self.time_axes.set_ylim(self.limit_time['min_dtec'], self.limit_time['max_dtec'])
-        # x_labs = self.time_axes.get_xticklabels()
-        # x_labs[-1] = ''
-        # self.time_axes.set_xticklabels(x_labs)
         self.time_widget.canvas.draw()
 
     def plot_receivers(self):
-        if self.gnss_archive:
-            _, rec_lon, rec_lat = self.gnss_archive.get_receiver_coords()
+        if self.receiver_file:
+            rec_lon = array.array('f')
+            rec_lat = array.array('f')
+            if os.path.isfile(self.receiver_file):
+                with open(self.receiver_file, mode='r') as rec_file:
+                    _ = rec_file.readline()
+                    for line in rec_file:
+                        data = line.split()
+                        rec_lat.append(float(data[1]))
+                        rec_lon.append(float(data[2]))
             self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=10, marker='o',
                                        transform=ccrs.PlateCarree())
             self.receiver_widget.canvas.draw()
 
-    def choose_gnss_data_archive(self):
-        file_name = QFileDialog.getOpenFileName(
-            caption="Open GNSS data archive",
-            filter="Archive files (*.zip)",
-            initialFilter="Archive files (*.zip)",
-            directory='C:/Users/Sergii/Dell_D/GNSS')
-        if file_name[0]:
-            self.gnss_archive = GnssArchive(file_name[0])
+    def choose_input_data_dir(self):
+        input_data_directory = QFileDialog.getExistingDirectory(self, 'Select Input Data Folder',
+                                                                directory=INPUT_DIR)
+        if input_data_directory:
+            self.receiver_file = f"{input_data_directory}/{RECEIVER_FILE}"
             self.plot_receivers()
-            current_year = int(self.gnss_archive.get_year())
-            current_month = int(self.gnss_archive.get_month())
-            current_day = int(self.gnss_archive.get_day())
+            input_params = input_data_directory.split('/')
+            current_date = input_params[-2]
+            current_year = int(input_params[-3])
+            current_month = int(input_params[-2][5:7])
+            current_day = int(input_params[-2][8:])
+            self.filter_sec = int(input_params[-1])
+            self.input_data_file = f"{input_data_directory}/{current_date}_{self.filter_sec}.txt"
             start_time = dt.datetime(current_year, current_month, current_day, 0, 0, 0)
             end_time = dt.datetime(current_year, current_month, current_day, 23, 59, 59)
             self.limit_time['min_time'] = start_time
@@ -234,13 +236,10 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
             self.dt_data_time_end.setDateTime(end_time)
 
     def read_data(self):
-        if self.gnss_archive is None:
-            raise FileNotFoundError("GNSS archive is not opened.")
         if not self.gnss_data.data:
-            file_name = f"{self.gnss_archive.get_parsed_file_stem(self.in_dir, self.filter_sec)}.txt"
-            if not os.path.isfile(file_name):
-                raise FileNotFoundError(f"Parsed file f'{file_name}' is not exist.")
-            self.gnss_data.read_gnss_data(file_name)
+            if not os.path.isfile(self.input_data_file):
+                raise FileNotFoundError(f"Parsed file f'{self.input_data_file}' is not exist.")
+            self.gnss_data.read_gnss_data(self.input_data_file)
 
     def plot_time_stamp_data(self):
         time_values = dict()
@@ -249,8 +248,6 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                                 minutes=self.t_data_time_span.time().minute(),
                                                 seconds=self.t_data_time_span.time().second())
         self.gnss_data.time_values = time_values
-        file_name = f"{self.gnss_archive.get_parsed_file_stem(self.in_dir, self.filter_sec)}.txt"
-        self.gnss_data.add_dir = '/'.join(file_name.split('/')[-4:-1])
         self.update_coords()
         time_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}_av.txt"
         self.map_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
@@ -301,7 +298,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                             lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
                             if lat_lon_data:
                                 lat_lon_dtec_raw = list(zip(*lat_lon_data))[2]
-                                lat_lon_dtec = list(map(self.dtec_corr, lat_lon_dtec_raw))
+                                lat_lon_dtec = list(map(dtec_corr, lat_lon_dtec_raw))
                                 dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
                                 res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
                                 c = self.map_color_bar.cmap(norm(dtec_value))
@@ -362,7 +359,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                                         self.gnss_data.time_dtec))
                 if time_data:
                     time_dtec_raw = list(zip(*time_data))[1]
-                    time_dtec = list(map(self.dtec_corr, time_dtec_raw))
+                    time_dtec = list(map(dtec_corr, time_dtec_raw))
                     c_dtec = sum(time_dtec) / len(time_dtec)
                     dtec_value.append(c_dtec)
                     time_value.append(c_time)
@@ -441,7 +438,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                             lat_time_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2, time_data))
                             if lat_time_data:
                                 lat_time_dtec_raw = list(zip(*lat_time_data))[2]
-                                lat_time_dtec = list(map(self.dtec_corr, lat_time_dtec_raw))
+                                lat_time_dtec = list(map(dtec_corr, lat_time_dtec_raw))
                                 dtec_value = sum(lat_time_dtec) / len(lat_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lat}\t{dtec_value}\n")
                                 c = self.keo_lat_color_bar.cmap(norm(dtec_value))
@@ -514,7 +511,7 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
                             lon_time_data = list(filter(lambda x: abs(x[1] - lon) <= corr_lon_span / 2, time_data))
                             if lon_time_data:
                                 lon_time_dtec_raw = list(zip(*lon_time_data))[2]
-                                lon_time_dtec = list(map(self.dtec_corr, lon_time_dtec_raw))
+                                lon_time_dtec = list(map(dtec_corr, lon_time_dtec_raw))
                                 dtec_value = sum(lon_time_dtec) / len(lon_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lon}\t{dtec_value}\n")
                                 c = self.keo_lon_color_bar.cmap(norm(dtec_value))

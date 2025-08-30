@@ -7,14 +7,6 @@ import datetime as dt
 TIME_FORMAT = '%Y.%m.%d %H:%M:%S'
 
 
-def convert_to_hours(tt: dt.datetime) -> float:
-    return tt.hour + tt.minute / 60. + tt.second / 3600.
-
-
-def convert_to_seconds(tt: dt.datetime) -> int:
-    return tt.hour * 3600 + tt.minute * 60 + tt.second
-
-
 class GnssArchive:
     def __init__(self, archive_name: str):
         self.filter_dirs = {3600: 'Window_3600_Seconds',
@@ -115,7 +107,7 @@ class GnssArchive:
         print("Reading is completed.")
 
 
-class GnssData:
+class GnssDataParser:
     def __init__(self):
         self.add_dir: str | None = None
         self.coord_values: dict | None = {'lon': None, 'lon_span': None,
@@ -182,7 +174,6 @@ class GnssData:
             raise TypeError("Times are not defined")
 
     def read_gnss_data(self, file_name):
-        self.add_dir = '/'.join(file_name.split('/')[-4:-1])
         if not self.data:
             with open(file_name, mode='r') as in_file:
                 self.data = in_file.readlines()
