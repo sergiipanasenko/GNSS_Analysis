@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from ui.qt_utils import MplWidget
 
 from ui.mpl_figure import DEFAULT_TICK_PARAMS, AxesMap
-from ui.cartopy_figure import (DEFAULT_LABEL_PARAMS, DEFAULT_GRID_PARAMS, GeoAxesMap)
+from ui.cartopy_figure import (DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS, GeoAxesMap)
 
 
 class Ui_MainWindow(object):
@@ -387,6 +387,7 @@ class Ui_MainWindow(object):
         self.gridLayout_4.addWidget(self.pushButton_3, 0, 0, 1, 1)
         self.verticalLayout.addLayout(self.gridLayout_4)
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
+
         self.space_widget = MplWidget(parent=self.centralwidget,
                                       axes_map=GeoAxesMap(is_cbar=True))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
@@ -396,7 +397,7 @@ class Ui_MainWindow(object):
         self.space_widget.setSizePolicy(sizePolicy)
         self.space_widget.setObjectName("space_widget")
         self.gridLayout.addWidget(self.space_widget, 0, 1, 1, 1)
-        r_label_params = DEFAULT_LABEL_PARAMS | {'frame_on': False}
+        r_label_params = DEFAULT_MAP_PARAMS | {'frame_on': False}
         r_grid_params = DEFAULT_GRID_PARAMS | {'draw_labels': False}
         r_map = GeoAxesMap(label_params=r_label_params, grid_params=r_grid_params)
         self.receiver_widget = MplWidget(parent=self.centralwidget, axes_map=r_map)
@@ -410,7 +411,6 @@ class Ui_MainWindow(object):
         self.receiver_widget.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self.gridLayout.addWidget(self.receiver_widget, 1, 0, 1, 1)
         t_tick_params = DEFAULT_TICK_PARAMS.copy()
-        t_tick_params['font_size'] = 12
         t_map = AxesMap(tick_params=t_tick_params)
         self.time_widget = MplWidget(parent=self.centralwidget,
                                      axes_map=t_map)

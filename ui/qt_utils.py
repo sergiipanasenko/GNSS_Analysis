@@ -17,7 +17,11 @@ class MplWidget(QWidget):
         # parent initialisation
         super().__init__()
         self.axes_map = axes_map
-        figure = mpl_figure() if axes_map is None else axes_map.create_figure()
+        if self.axes_map is None:
+            figure = mpl_figure()
+        else:
+            self.axes_map.create_figure()
+            figure = self.axes_map.figure
         # Create canvas object
         self.canvas = MplCanvas(figure)
         self.vbl = QVBoxLayout()  # Set box for plotting
