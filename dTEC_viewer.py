@@ -1,12 +1,11 @@
-from PyQt5.QtGui import QGuiApplication
-from PyQt5.QtWidgets import QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QFileDialog
 
 from dTEC import dtec_corr
-from gnss import GnssArchive, GnssDataParser, TIME_FORMAT
+from gnss import GnssDataParser, TIME_FORMAT
+from ui.dTEC_window import DTEC_Window
 from utils.time import convert_to_hours
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS, PROJECTIONS
 from utils.geo.geo_coords import GeoCoord
-from ui.main_window1 import Ui_MainWindow
 import cartopy.crs as ccrs
 
 from matplotlib.patches import Rectangle
@@ -26,33 +25,10 @@ STAGES = ('Original', 'Without outliers', 'Interpolated', 'Bandpass filtered')
 DEFAULT_CMAP = 'rainbow'
 
 
-class DTECViewerForm(QMainWindow, Ui_MainWindow):
+class DTECViewerForm(DTEC_Window):
     def __init__(self):
         # parent initialisation
         super().__init__()
-
-        # ui loading
-        self.setupUi(self)
-        self.time_axes = self.time_widget.canvas.figure.gca()
-        self.map_axes = self.map_widget.canvas.figure.axes[0]
-        self.map_cbar_axes = self.map_widget.canvas.figure.axes[1]
-        self.map_color_bar = self.map_widget.axes_map.color_bar
-        self.keo_lat_axes = self.keo_lat_widget.canvas.figure.axes[0]
-        self.keo_lat_cbar_axes = self.keo_lat_widget.canvas.figure.axes[1]
-        self.keo_lat_color_bar = self.keo_lat_widget.axes_map.color_bar
-        self.keo_lon_axes = self.keo_lon_widget.canvas.figure.axes[0]
-        self.keo_lon_cbar_axes = self.keo_lon_widget.canvas.figure.axes[1]
-        self.keo_lon_color_bar = self.keo_lon_widget.axes_map.color_bar
-        self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
-
-        # centering
-        qt_rect = self.frameGeometry()
-        center_point = (QGuiApplication.primaryScreen().
-                        availableGeometry().center())
-        y_coord = center_point.y()
-        center_point.setY(y_coord - 40)
-        qt_rect.moveCenter(center_point)
-        self.move(qt_rect.topLeft())
 
         # settings
         self.combo_region.setCurrentIndex(2)
@@ -60,7 +36,6 @@ class DTECViewerForm(QMainWindow, Ui_MainWindow):
         self.combo_cmap.addItems(list(colormaps))
         self.combo_cmap.setCurrentIndex(self.combo_cmap.findText(DEFAULT_CMAP))
         self.combo_stage.addItems(STAGES)
-
         min_date_time = dt.datetime.combine(dt.date.today(), dt.time(0, 0, 0))
         max_date_time = min_date_time + dt.timedelta(hours=23, minutes=59, seconds=59)
         current_date_time = dt.datetime.now()
