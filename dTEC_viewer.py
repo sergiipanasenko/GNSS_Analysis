@@ -1,20 +1,19 @@
 from PyQt5.QtWidgets import QFileDialog
 
-from dTEC import dtec_corr
-from gnss import GnssDataParser, TIME_FORMAT
 from ui.dTEC_window import DTEC_Window
 from utils.time import convert_to_hours
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS, PROJECTIONS
 from utils.geo.geo_coords import GeoCoord
-import cartopy.crs as ccrs
+from dTEC import DTEC_handling
+from gnss import TIME_FORMAT
 
+import cartopy.crs as ccrs
 from matplotlib.patches import Rectangle
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
 from matplotlib import colormaps
 
 import math
-from numpy import median
 import os
 import array
 import datetime as dt
@@ -104,7 +103,7 @@ class DTECViewerForm(DTEC_Window):
         self.spin_lon_span_degs.setValue(self.analyzed_coords['lon_span'].degs)
         self.spin_lon_span_mins.setValue(self.analyzed_coords['lon_span'].mins)
 
-        self.gnss_data = GnssDataParser()
+        self.dTEC_parser = DTEC_handling(INPUT_DIR, OUTPUT_DIR)
         self.input_data_file = None
         self.receiver_file = None
 
@@ -194,13 +193,13 @@ class DTECViewerForm(DTEC_Window):
             self.receiver_file = f"{input_data_directory}/{RECEIVER_FILE}"
             self.plot_receivers()
             input_params = input_data_directory.split('/')
-            self.gnss_data.add_dir = '/'.join(input_params[-4:])
+            self.dTEC_parser.gnss_parser.add_dir = '/'.join(input_params[-4:])
             current_date = input_params[-2]
             current_year = int(input_params[-3])
             current_month = int(input_params[-2][5:7])
             current_day = int(input_params[-2][8:])
             self.filter_sec = int(input_params[-1])
-            self.input_data_file = f"{input_data_directory}/{current_date}_{self.filter_sec}.txt"
+            self.dTEC_parser.input_data_file = f"{input_data_directory}/{current_date}_{self.filter_sec}.txt"
             start_time = dt.datetime(current_year, current_month, current_day, 0, 0, 0)
             end_time = dt.datetime(current_year, current_month, current_day, 23, 59, 59)
             self.limit_time['min_time'] = start_time
@@ -212,19 +211,7 @@ class DTECViewerForm(DTEC_Window):
             self.dt_data_time_start.setDateTime(start_time)
             self.dt_data_time_end.setDateTime(end_time)
 
-    def read_data(self):
-        if not self.gnss_data.data:
-            if not os.path.isfile(self.input_data_file):
-                raise FileNotFoundError(f"Parsed file f'{self.input_data_file}' is not exist.")
-            self.gnss_data.read_gnss_data(self.input_data_file)
-
     def plot_time_stamp_data(self):
-        time_values = dict()
-        time_values['time'] = self.dt_data_time_start.dateTime().toPyDateTime()
-        time_values['time_span'] = dt.timedelta(hours=self.t_data_time_span.time().hour(),
-                                                minutes=self.t_data_time_span.time().minute(),
-                                                seconds=self.t_data_time_span.time().second())
-        self.gnss_data.time_values = time_values
         self.update_coords()
         self.map_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
         cmap = self.map_color_bar.cmap
@@ -238,33 +225,18 @@ class DTECViewerForm(DTEC_Window):
         self.analyzed_coords['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
                                                     self.spin_lon_span_mins.value())
         lon_span = self.analyzed_coords['lon_span'].get_float_degs()
+        self.dTEC_parser.gnss_parser.coord_values['lon_span'] = lon_span
+        self.dTEC_parser.gnss_parser.coord_values['lat_span'] = lat_span
         time_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(OUTPUT_DIR)}_av.txt"
         if not os.path.isfile(time_file_name):
-            self.read_data()
-            self.gnss_data.get_lon_lat_dtec(OUTPUT_DIR, time_values)
+            self.dTEC_parser.gnss_parser.time_values = {
+                'time': self.dt_data_time_start.dateTime().toPyDateTime(),
+                'time_span': dt.timedelta(hours=self.t_data_time_span.time().hour(),
+                                          minutes=self.t_data_time_span.time().minute(),
+                                          seconds=self.t_data_time_span.time().second())
+            }
             coords = self.map_widget.axes_map.coords
-            min_lat = coords['min_lat'].get_float_degs()
-            max_lat = coords['max_lat'].get_float_degs()
-            min_lon = coords['min_lon'].get_float_degs()
-            max_lon = coords['max_lon'].get_float_degs()
-            n_lat = math.ceil((max_lat - min_lat) / lat_span)
-            plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
-            with open(time_file_name, mode='w') as res_file:
-                for lat in plot_lat:
-                    lat_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2,
-                                           self.gnss_data.lon_lat_dtec))
-                    if lat_data:
-                        corr_lon_span = lon_span / math.cos(math.radians(lat))
-                        n_lon = math.ceil((max_lon - min_lon) / corr_lon_span)
-                        plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
-                        for lon in plot_lon:
-                            lat_lon_data = list(filter(lambda x: abs(x[0] - lon) <= corr_lon_span / 2, lat_data))
-                            if lat_lon_data:
-                                lat_lon_dtec_raw = list(zip(*lat_lon_data))[2]
-                                lat_lon_dtec = list(map(dtec_corr, lat_lon_dtec_raw))
-                                # dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
-                                dtec_value = median(lat_lon_dtec)
-                                res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
+            self.dTEC_parser.create_time_stamp_data(coords)
         with open(time_file_name, mode='r') as res_file:
             raw_data = [line.split('\t') for line in res_file]
             for data in raw_data:
@@ -278,7 +250,7 @@ class DTECViewerForm(DTEC_Window):
                                                   edgecolor='none',
                                                   facecolor=c,
                                                   transform=ccrs.PlateCarree()))
-        current_time = self.gnss_data.time_values['time'].strftime("%Y-%m-%d   %H:%M:%S")
+        current_time = self.dTEC_parser.gnss_parser.time_values['time'].strftime("%Y-%m-%d   %H:%M:%S")
         title = f"{current_time} UT"
         # current_lat = float(self.lineEdit_12.text())
         # current_lon = float(self.lineEdit_13.text())
@@ -322,7 +294,8 @@ class DTECViewerForm(DTEC_Window):
                                         self.gnss_data.time_dtec))
                 if time_data:
                     time_dtec_raw = list(zip(*time_data))[1]
-                    time_dtec = list(map(dtec_corr, time_dtec_raw))
+                    # time_dtec = list(map(dtec_corr, time_dtec_raw))
+                    time_dtec = time_dtec_raw
                     c_dtec = sum(time_dtec) / len(time_dtec)
                     dtec_value.append(c_dtec)
                     time_value.append(c_time)
@@ -392,7 +365,8 @@ class DTECViewerForm(DTEC_Window):
                             lat_time_data = list(filter(lambda x: abs(x[1] - lat) <= lat_span / 2, time_data))
                             if lat_time_data:
                                 lat_time_dtec_raw = list(zip(*lat_time_data))[2]
-                                lat_time_dtec = list(map(dtec_corr, lat_time_dtec_raw))
+                                # lat_time_dtec = list(map(dtec_corr, lat_time_dtec_raw))
+                                lat_time_dtec = lat_time_dtec_raw
                                 dtec_value = sum(lat_time_dtec) / len(lat_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lat}\t{dtec_value}\n")
         with open(lat_file_name, mode='r') as res_file:
@@ -458,7 +432,8 @@ class DTECViewerForm(DTEC_Window):
                             lon_time_data = list(filter(lambda x: abs(x[1] - lon) <= corr_lon_span / 2, time_data))
                             if lon_time_data:
                                 lon_time_dtec_raw = list(zip(*lon_time_data))[2]
-                                lon_time_dtec = list(map(dtec_corr, lon_time_dtec_raw))
+                                # lon_time_dtec = list(map(dtec_corr, lon_time_dtec_raw))
+                                lon_time_dtec = lon_time_dtec_raw
                                 dtec_value = sum(lon_time_dtec) / len(lon_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lon}\t{dtec_value}\n")
         with open(lon_file_name, mode='r') as res_file:
