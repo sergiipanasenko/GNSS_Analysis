@@ -14,15 +14,17 @@ from matplotlib.cm import ScalarMappable
 from matplotlib import colormaps
 
 import math
+from numpy import median
 import os
 import array
 import datetime as dt
 
-OUTPUT_DIR = 'results/out/'
+OUTPUT_DIR = 'results/out'
 INPUT_DIR = 'results/in'
 RECEIVER_FILE = 'Sites.txt'
 STAGES = ('Original', 'Without outliers', 'Interpolated', 'Bandpass filtered')
 DEFAULT_CMAP = 'rainbow'
+TIME_SPAN = dt.time(0, 0, 30)
 
 
 class DTECViewerForm(DTEC_Window):
@@ -96,8 +98,7 @@ class DTECViewerForm(DTEC_Window):
         self.spin_lon_end_mins.setValue(self.analyzed_coords['end_lon'].mins)
         self.dt_data_time_start.setDateTime(self.analyzed_time['start_time'])
         self.dt_data_time_end.setDateTime(self.analyzed_time['end_time'])
-        time_span = dt.time(0, 0, 30)
-        self.t_data_time_span.setTime(time_span)
+        self.t_data_time_span.setTime(TIME_SPAN)
         self.spin_lat_span_degs.setValue(self.analyzed_coords['lat_span'].degs)
         self.spin_lat_span_mins.setValue(self.analyzed_coords['lat_span'].mins)
         self.spin_lon_span_degs.setValue(self.analyzed_coords['lon_span'].degs)
@@ -131,12 +132,12 @@ class DTECViewerForm(DTEC_Window):
         max_lat = GeoCoord(self.spin_maxlat_degs.value(), self.spin_maxlat_mins.value())
         min_lon = GeoCoord(self.spin_minlon_degs.value(), self.spin_minlon_mins.value())
         max_lon = GeoCoord(self.spin_maxlon_degs.value(), self.spin_maxlon_mins.value())
-        centr_lat = GeoCoord(self.spin_centrlat_degs.value(), self.spin_centrlat_mins.value())
-        centr_lon = GeoCoord(self.spin_centrlon_degs.value(), self.spin_centrlon_mins.value())
+        central_lat = GeoCoord(self.spin_centrlat_degs.value(), self.spin_centrlat_mins.value())
+        central_lon = GeoCoord(self.spin_centrlon_degs.value(), self.spin_centrlon_mins.value())
         coords = {'min_lat': min_lat, 'max_lat': max_lat,
                   'min_lon': min_lon, 'max_lon': max_lon,
-                  'central_long': centr_lon,
-                  'central_lat': centr_lat}
+                  'central_long': central_lon,
+                  'central_lat': central_lat}
         self.map_widget.axes_map.coords = coords
         s_width, s_height = self.map_widget.canvas.figure.get_size_inches()
         self.map_widget.axes_map = GeoAxesMap(coords=coords, is_cbar=True)
@@ -193,6 +194,7 @@ class DTECViewerForm(DTEC_Window):
             self.receiver_file = f"{input_data_directory}/{RECEIVER_FILE}"
             self.plot_receivers()
             input_params = input_data_directory.split('/')
+            self.gnss_data.add_dir = '/'.join(input_params[-4:])
             current_date = input_params[-2]
             current_year = int(input_params[-3])
             current_month = int(input_params[-2][5:7])
@@ -224,7 +226,6 @@ class DTECViewerForm(DTEC_Window):
                                                 seconds=self.t_data_time_span.time().second())
         self.gnss_data.time_values = time_values
         self.update_coords()
-        time_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}_av.txt"
         self.map_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
         cmap = self.map_color_bar.cmap
         v_min = self.dspin_lat_lon_min.value()
@@ -237,23 +238,10 @@ class DTECViewerForm(DTEC_Window):
         self.analyzed_coords['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
                                                     self.spin_lon_span_mins.value())
         lon_span = self.analyzed_coords['lon_span'].get_float_degs()
-        if os.path.isfile(time_file_name):
-            with open(time_file_name, mode='r') as res_file:
-                raw_data = [line.split('\t') for line in res_file]
-                for data in raw_data:
-                    lon_value = float(data[0])
-                    lat_value = float(data[1])
-                    dtec_value = float(data[2])
-                    corr_lon_span = lon_span / math.cos(math.radians(lat_value))
-                    c = self.map_color_bar.cmap(norm(dtec_value))
-                    self.map_axes.add_patch(Rectangle(xy=(lon_value - corr_lon_span / 2, lat_value - lat_span / 2),
-                                                      width=corr_lon_span, height=lat_span,
-                                                      edgecolor='none',
-                                                      facecolor=c,
-                                                      transform=ccrs.PlateCarree()))
-        else:
+        time_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(OUTPUT_DIR)}_av.txt"
+        if not os.path.isfile(time_file_name):
             self.read_data()
-            self.gnss_data.get_lon_lat_dtec(self.out_dir, time_values)
+            self.gnss_data.get_lon_lat_dtec(OUTPUT_DIR, time_values)
             coords = self.map_widget.axes_map.coords
             min_lat = coords['min_lat'].get_float_degs()
             max_lat = coords['max_lat'].get_float_degs()
@@ -274,14 +262,22 @@ class DTECViewerForm(DTEC_Window):
                             if lat_lon_data:
                                 lat_lon_dtec_raw = list(zip(*lat_lon_data))[2]
                                 lat_lon_dtec = list(map(dtec_corr, lat_lon_dtec_raw))
-                                dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
+                                # dtec_value = sum(lat_lon_dtec) / len(lat_lon_dtec)
+                                dtec_value = median(lat_lon_dtec)
                                 res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
-                                c = self.map_color_bar.cmap(norm(dtec_value))
-                                self.map_axes.add_patch(Rectangle(xy=(lon - corr_lon_span / 2, lat - lat_span / 2),
-                                                                  width=corr_lon_span, height=lat_span,
-                                                                  edgecolor='none',
-                                                                  facecolor=c,
-                                                                  transform=ccrs.PlateCarree()))
+        with open(time_file_name, mode='r') as res_file:
+            raw_data = [line.split('\t') for line in res_file]
+            for data in raw_data:
+                lon_value = float(data[1])
+                lat_value = float(data[0])
+                dtec_value = float(data[2])
+                corr_lon_span = lon_span / math.cos(math.radians(lat_value))
+                c = self.map_color_bar.cmap(norm(dtec_value))
+                self.map_axes.add_patch(Rectangle(xy=(lon_value - corr_lon_span / 2, lat_value - lat_span / 2),
+                                                  width=corr_lon_span, height=lat_span,
+                                                  edgecolor='none',
+                                                  facecolor=c,
+                                                  transform=ccrs.PlateCarree()))
         current_time = self.gnss_data.time_values['time'].strftime("%Y-%m-%d   %H:%M:%S")
         title = f"{current_time} UT"
         # current_lat = float(self.lineEdit_12.text())
@@ -293,7 +289,7 @@ class DTECViewerForm(DTEC_Window):
         self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
                                            family='Times New Roman', size=16)
         self.map_widget.canvas.draw()
-        fig_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(self.out_dir)}.png"
+        fig_file_name = f"{self.gnss_data.get_lon_lat_dtec_file_stem(OUTPUT_DIR)}.png"
         # if not os.path.isfile(fig_file_name):
         self.map_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
@@ -308,21 +304,13 @@ class DTECViewerForm(DTEC_Window):
         coord_values['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
                                             self.spin_lat_span_mins.value())
         self.gnss_data.coord_values = coord_values
-        file_name = f"{self.gnss_archive.get_parsed_file_stem(self.in_dir, self.filter_sec)}.txt"
-        self.gnss_data.add_dir = '/'.join(file_name.split('/')[-4:-1])
-        coord_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}_av.txt"
+        coord_file_name = f"{self.gnss_data.get_time_dtec_file_stem(OUTPUT_DIR)}_av.txt"
         time_value = []
         dtec_value = []
-        if os.path.isfile(coord_file_name):
-            with open(coord_file_name, mode='r') as res_file:
-                raw_data = [line.split('\t') for line in res_file]
-                data = list(zip(*raw_data))
-                time_value = [dt.datetime.strptime(x, TIME_FORMAT) for x in data[0]]
-                dtec_value = list(map(float, data[1]))
-        else:
+        if not os.path.isfile(coord_file_name):
             current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
             self.read_data()
-            self.gnss_data.get_time_dtec(self.out_dir, coord_values, current_date)
+            self.gnss_data.get_time_dtec(OUTPUT_DIR, coord_values, current_date)
             self.update_time_value()
             min_time = self.limit_time['min_time']
             max_time = self.limit_time['max_time']
@@ -343,16 +331,20 @@ class DTECViewerForm(DTEC_Window):
                     current_time_value = line[0].strftime('%Y.%m.%d %H:%M:%S')
                     current_dtec_value = line[1]
                     res_file.write(f"{current_time_value}\t{current_dtec_value}\n")
+        with open(coord_file_name, mode='r') as res_file:
+            raw_data = [line.split('\t') for line in res_file]
+            data = list(zip(*raw_data))
+            time_value = [dt.datetime.strptime(x, TIME_FORMAT) for x in data[0]]
+            dtec_value = list(map(float, data[1]))
         for graph in self.time_widget.axes_map.graphs:
             graph.remove()
             self.time_widget.axes_map.graphs.remove(graph)
-        # self.time_axes.clear()
         x_time_value = list(map(convert_to_hours, time_value))
         graph = self.time_axes.scatter(x_time_value, dtec_value, s=0.8, color='blue')
         self.time_widget.axes_map.graphs.append(graph)
         # self.update_time_value()
         self.time_widget.canvas.draw()
-        fig_file_name = f"{self.gnss_data.get_time_dtec_file_stem(self.out_dir)}.png"
+        fig_file_name = f"{self.gnss_data.get_time_dtec_file_stem(OUTPUT_DIR)}.png"
 
         # if not os.path.isfile(fig_file_name):
         self.time_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
@@ -365,7 +357,7 @@ class DTECViewerForm(DTEC_Window):
         coord_values['lon_span'] = GeoCoord(self.spin_lon_span_degs.value(),
                                             self.spin_lon_span_mins.value())
         self.gnss_data.coord_values = coord_values
-        lat_file_name = f"{self.gnss_data.get_lat_time_dtec_file_stem(self.out_dir)}_av.txt"
+        lat_file_name = f"{self.gnss_data.get_lat_time_dtec_file_stem(OUTPUT_DIR)}_av.txt"
         self.keo_lat_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
         cmap = self.keo_lat_color_bar.cmap
         v_min = self.dspin_lat_time_min.value()
@@ -377,23 +369,10 @@ class DTECViewerForm(DTEC_Window):
         self.analyzed_coords['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
                                                     self.spin_lat_span_mins.value())
         lat_span = self.analyzed_coords['lat_span'].get_float_degs()
-        if os.path.isfile(lat_file_name):
-            with open(lat_file_name, mode='r') as res_file:
-                raw_data = [line.split('\t') for line in res_file]
-                for data in raw_data:
-                    time_value = convert_to_hours(dt.datetime.strptime(data[0], TIME_FORMAT))
-                    lat_value = float(data[1])
-                    dtec_value = float(data[2])
-                    c = self.keo_lat_color_bar.cmap(norm(dtec_value))
-                    self.keo_lat_axes.add_patch(Rectangle(xy=(time_value - x_time_span / 2,
-                                                              lat_value - lat_span / 2),
-                                                          width=x_time_span, height=lat_span,
-                                                          edgecolor='none',
-                                                          facecolor=c))
-        else:
+        if not os.path.isfile(lat_file_name):
             current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
             self.read_data()
-            self.gnss_data.get_lat_time_dtec(self.out_dir, coord_values, current_date)
+            self.gnss_data.get_lat_time_dtec(OUTPUT_DIR, coord_values, current_date)
             min_time = self.limit_time['min_time']
             max_time = self.limit_time['max_time']
             n_time = math.ceil((max_time - min_time) / time_span)
@@ -416,14 +395,20 @@ class DTECViewerForm(DTEC_Window):
                                 lat_time_dtec = list(map(dtec_corr, lat_time_dtec_raw))
                                 dtec_value = sum(lat_time_dtec) / len(lat_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lat}\t{dtec_value}\n")
-                                c = self.keo_lat_color_bar.cmap(norm(dtec_value))
-                                self.keo_lat_axes.add_patch(Rectangle(xy=(current_time - x_time_span / 2,
-                                                                          lat - lat_span / 2),
-                                                                      width=x_time_span, height=lat_span,
-                                                                      edgecolor='none',
-                                                                      facecolor=c))
+        with open(lat_file_name, mode='r') as res_file:
+            raw_data = [line.split('\t') for line in res_file]
+            for data in raw_data:
+                time_value = convert_to_hours(dt.datetime.strptime(data[0], TIME_FORMAT))
+                lat_value = float(data[1])
+                dtec_value = float(data[2])
+                c = self.keo_lat_color_bar.cmap(norm(dtec_value))
+                self.keo_lat_axes.add_patch(Rectangle(xy=(time_value - x_time_span / 2,
+                                                          lat_value - lat_span / 2),
+                                                      width=x_time_span, height=lat_span,
+                                                      edgecolor='none',
+                                                      facecolor=c))
         self.keo_lat_widget.canvas.draw()
-        fig_file_name = f"{self.gnss_data.get_lat_time_dtec_file_stem(self.out_dir)}.png"
+        fig_file_name = f"{self.gnss_data.get_lat_time_dtec_file_stem(OUTPUT_DIR)}.png"
         # if not os.path.isfile(fig_file_name):
         self.keo_lat_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 
@@ -435,7 +420,7 @@ class DTECViewerForm(DTEC_Window):
         coord_values['lat_span'] = GeoCoord(self.spin_lat_span_degs.value(),
                                             self.spin_lat_span_mins.value())
         self.gnss_data.coord_values = coord_values
-        lon_file_name = f"{self.gnss_data.get_lon_time_dtec_file_stem(self.out_dir)}_av.txt"
+        lon_file_name = f"{self.gnss_data.get_lon_time_dtec_file_stem(OUTPUT_DIR)}_av.txt"
         self.keo_lon_color_bar.cmap = colormaps[self.combo_cmap.currentText()]
         cmap = self.keo_lon_color_bar.cmap
         v_min = self.dspin_lon_time_min.value()
@@ -449,23 +434,10 @@ class DTECViewerForm(DTEC_Window):
         lon_span = self.analyzed_coords['lon_span'].get_float_degs()
         current_lat = coord_values['lat'].get_float_degs()
         corr_lon_span = lon_span / math.cos(math.radians(current_lat))
-        if os.path.isfile(lon_file_name):
-            with open(lon_file_name, mode='r') as res_file:
-                raw_data = [line.split('\t') for line in res_file]
-                for data in raw_data:
-                    time_value = convert_to_hours(dt.datetime.strptime(data[0], TIME_FORMAT))
-                    lon_value = float(data[1])
-                    dtec_value = float(data[2])
-                    c = self.keo_lon_color_bar.cmap(norm(dtec_value))
-                    self.keo_lon_axes.add_patch(Rectangle(xy=(time_value - x_time_span / 2,
-                                                              lon_value - corr_lon_span / 2),
-                                                          width=x_time_span, height=corr_lon_span,
-                                                          edgecolor='none',
-                                                          facecolor=c))
-        else:
+        if not os.path.isfile(lon_file_name):
             current_date = self.dt_data_time_start.dateTime().toPyDateTime().date()
             self.read_data()
-            self.gnss_data.get_lon_time_dtec(self.out_dir, coord_values, current_date)
+            self.gnss_data.get_lon_time_dtec(OUTPUT_DIR, coord_values, current_date)
             min_time = self.limit_time['min_time']
             max_time = self.limit_time['max_time']
             n_time = math.ceil((max_time - min_time) / time_span)
@@ -489,14 +461,20 @@ class DTECViewerForm(DTEC_Window):
                                 lon_time_dtec = list(map(dtec_corr, lon_time_dtec_raw))
                                 dtec_value = sum(lon_time_dtec) / len(lon_time_dtec)
                                 res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lon}\t{dtec_value}\n")
-                                c = self.keo_lon_color_bar.cmap(norm(dtec_value))
-                                self.keo_lon_axes.add_patch(Rectangle(xy=(current_time - x_time_span / 2,
-                                                                          lon - corr_lon_span / 2),
-                                                                      width=x_time_span, height=corr_lon_span,
-                                                                      edgecolor='none',
-                                                                      facecolor=c))
+        with open(lon_file_name, mode='r') as res_file:
+            raw_data = [line.split('\t') for line in res_file]
+            for data in raw_data:
+                time_value = convert_to_hours(dt.datetime.strptime(data[0], TIME_FORMAT))
+                lon_value = float(data[1])
+                dtec_value = float(data[2])
+                c = self.keo_lon_color_bar.cmap(norm(dtec_value))
+                self.keo_lon_axes.add_patch(Rectangle(xy=(time_value - x_time_span / 2,
+                                                          lon_value - corr_lon_span / 2),
+                                                      width=x_time_span, height=corr_lon_span,
+                                                      edgecolor='none',
+                                                      facecolor=c))
         self.keo_lon_widget.canvas.draw()
-        fig_file_name = f"{self.gnss_data.get_lon_time_dtec_file_stem(self.out_dir)}.png"
+        fig_file_name = f"{self.gnss_data.get_lon_time_dtec_file_stem(OUTPUT_DIR)}.png"
         # if not os.path.isfile(fig_file_name):
         self.keo_lon_widget.canvas.figure.savefig(dpi=200, fname=fig_file_name)
 

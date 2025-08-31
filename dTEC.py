@@ -1,3 +1,7 @@
+from utils.geo.geo_coords import GeoCoord
+from ui.cartopy_figure import COORDS
+
+
 LIMIT_DTEC = 1
 
 

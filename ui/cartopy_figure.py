@@ -9,26 +9,31 @@ from matplotlib import colormaps
 
 from utils.geo.geo_coords import GeoCoord
 
-UA_COORDS = {'min_lat': GeoCoord(44, 0), 'max_lat': GeoCoord(52, 30),
-             'min_lon': GeoCoord(22, 0), 'max_lon': GeoCoord(40, 30),
-             'central_long': GeoCoord(31, 30), 'central_lat': GeoCoord(48, 30)}
-EU_COORDS = {'min_lat': GeoCoord(36, 0), 'max_lat': GeoCoord(71, 0),
-             'min_lon': GeoCoord(-10, 0), 'max_lon': GeoCoord(30, 0),
-             'central_long': GeoCoord(10, 0), 'central_lat': GeoCoord(53, 30)}
-US_COORDS = {'min_lat': GeoCoord(23, 0), 'max_lat': GeoCoord(55, 0),
-             'min_lon': GeoCoord(-126, 0), 'max_lon': GeoCoord(-66, 0),
-             'central_long': GeoCoord(-96, 0), 'central_lat': GeoCoord(39, 0)}
+COORDS = {
+    'UA': {'min_lat': GeoCoord(44, 0), 'max_lat': GeoCoord(52, 30),
+                 'min_lon': GeoCoord(22, 0), 'max_lon': GeoCoord(40, 30),
+                 'central_long': GeoCoord(31, 30), 'central_lat': GeoCoord(48, 30)},
+    'EU': {'min_lat': GeoCoord(36, 0), 'max_lat': GeoCoord(71, 0),
+                 'min_lon': GeoCoord(-10, 0), 'max_lon': GeoCoord(30, 0),
+                 'central_long': GeoCoord(10, 0), 'central_lat': GeoCoord(53, 30)},
+    'US': {'min_lat': GeoCoord(23, 0), 'max_lat': GeoCoord(55, 0),
+                 'min_lon': GeoCoord(-126, 0), 'max_lon': GeoCoord(-66, 0),
+                 'central_long': GeoCoord(-96, 0), 'central_lat': GeoCoord(39, 0)},
+    'SA': {'min_lat': GeoCoord(-35, 0), 'max_lat': GeoCoord(-20, 0),
+                 'min_lon': GeoCoord(15, 0), 'max_lon': GeoCoord(35, 0),
+                 'central_long': GeoCoord(25, 0), 'central_lat': GeoCoord(-27, 30)}
+}
 
-SA_COORDS = {'min_lat': GeoCoord(-35, 0), 'max_lat': GeoCoord(-20, 0),
-             'min_lon': GeoCoord(15, 0), 'max_lon': GeoCoord(35, 0),
-             'central_long': GeoCoord(25, 0), 'central_lat': GeoCoord(-27, 30)}
 
 DEFAULT_SHP_PARAMS = {'face_color': 'none', 'edge_color': 'gray',
                       'border_width': 0.3, 'coast_width': 0.3}
+
 DEFAULT_GRID_PARAMS = {'grid_width': 0.2, 'draw_labels': True}
+
 DEFAULT_MAP_PARAMS = {'size': 18, 'color': 'black',
                       'family': 'Times New Roman',
                       'frame_on': True}
+
 DEFAULT_CBAR_PARAMS = {'size': 18, 'color': 'black',
                        'family': 'Times New Roman',
                        'title_pad': 18.0, 'title': 'dTEC (TECU)'}
@@ -75,7 +80,7 @@ class GeoAxesMap:
                  shp_params=None, grid_params=None,
                  label_params=None, is_cbar=False,
                  cbar_params=None, cbar_orient='vertical'):
-        self.coords = EU_COORDS.copy() if coords is None else coords.copy()
+        self.coords = COORDS['EU'].copy() if coords is None else coords.copy()
         self.shp_params = DEFAULT_SHP_PARAMS.copy() if shp_params is None \
             else shp_params.copy()
         self.grid_params = DEFAULT_GRID_PARAMS.copy() if grid_params is None \

@@ -760,9 +760,8 @@ class Ui_MainWindow(object):
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.menuSettings.setTitle(_translate("MainWindow", "Settings"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
-        self.actionOpen.setText(_translate("MainWindow", "Open data file..."))
+        self.actionOpen.setText(_translate("MainWindow", "Open input data directory..."))
         self.actionAbout.setText(_translate("MainWindow", "About..."))
-        self.actionOpen_receiver_list.setText(_translate("MainWindow", "Open receiver list..."))
 
 
 if __name__ == "__main__":

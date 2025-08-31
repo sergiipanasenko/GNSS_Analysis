@@ -161,9 +161,9 @@ class GnssDataParser:
         else:
             raise TypeError("Longitudes are not defined")
 
-    def get_lon_lat_dtec_file_stem(self, out_dir):
+    def get_lon_lat_dtec_file_stem(self, out_dir, level=1):
         if all((self.time_values['time'], self.time_values['time_span'])):
-            dir_name = f"{out_dir}/{self.add_dir}/Time/1"
+            dir_name = f"{out_dir}/{self.add_dir}/Time/{level}"
             os.makedirs(dir_name, exist_ok=True)
             td = self.time_values['time_span']
             hours, minutes, seconds = td.seconds // 3600, td.seconds // 60 % 60, td.seconds
