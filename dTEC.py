@@ -1,5 +1,6 @@
 import os
 import math
+import datetime as dt
 from numpy import median
 from utils.geo.geo_coords import GeoCoord
 from ui.cartopy_figure import COORDS
@@ -56,3 +57,31 @@ class DTEC_handling:
                             lat_lon_dtec = list(map(self.dtec_corr, lat_lon_dtec_raw))
                             dtec_value = median(lat_lon_dtec)
                             res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
+
+    def create_coords_stamp_data(self, time_values):
+        time_list = []
+        dtec_list = []
+        self.read_data()
+        coord_values = self.gnss_parser.coord_values
+        min_time = time_values['min_time']
+        max_time = time_values['max_time']
+        time_span = time_values['time_span']
+        current_date = min_time.date()
+        self.gnss_parser.get_time_dtec(self.output_dir, coord_values, current_date)
+        n_time = math.ceil((max_time - min_time) / time_span)
+        plot_time = [min_time + j * time_span for j in range(n_time)]
+        for c_time in plot_time:
+            time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2,
+                                    self.gnss_parser.time_dtec))
+            if time_data:
+                time_dtec_raw = list(zip(*time_data))[1]
+                time_dtec = list(map(self.dtec_corr, time_dtec_raw))
+                c_dtec = sum(time_dtec) / len(time_dtec)
+                dtec_list.append(c_dtec)
+                time_list.append(c_time)
+        coord_file_name = f"{self.gnss_parser.get_time_dtec_file_stem(self.output_dir)}_av.txt"
+        with open(coord_file_name, mode='w') as res_file:
+            for line in list(zip(time_list, dtec_list)):
+                current_time_value = line[0].strftime('%Y.%m.%d %H:%M:%S')
+                current_dtec_value = line[1]
+                res_file.write(f"{current_time_value}\t{current_dtec_value}\n")
