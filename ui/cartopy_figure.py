@@ -11,19 +11,18 @@ from utils.geo.geo_coords import GeoCoord
 
 COORDS = {
     'UA': {'min_lat': GeoCoord(44, 0), 'max_lat': GeoCoord(52, 30),
-                 'min_lon': GeoCoord(22, 0), 'max_lon': GeoCoord(40, 30),
-                 'central_long': GeoCoord(31, 30), 'central_lat': GeoCoord(48, 30)},
+           'min_lon': GeoCoord(22, 0), 'max_lon': GeoCoord(40, 30),
+           'central_long': GeoCoord(31, 30), 'central_lat': GeoCoord(48, 30)},
     'EU': {'min_lat': GeoCoord(36, 0), 'max_lat': GeoCoord(71, 0),
-                 'min_lon': GeoCoord(-10, 0), 'max_lon': GeoCoord(30, 0),
-                 'central_long': GeoCoord(10, 0), 'central_lat': GeoCoord(53, 30)},
+           'min_lon': GeoCoord(-10, 0), 'max_lon': GeoCoord(30, 0),
+           'central_long': GeoCoord(10, 0), 'central_lat': GeoCoord(53, 30)},
     'US': {'min_lat': GeoCoord(23, 0), 'max_lat': GeoCoord(55, 0),
-                 'min_lon': GeoCoord(-126, 0), 'max_lon': GeoCoord(-66, 0),
-                 'central_long': GeoCoord(-96, 0), 'central_lat': GeoCoord(39, 0)},
+           'min_lon': GeoCoord(-126, 0), 'max_lon': GeoCoord(-66, 0),
+           'central_long': GeoCoord(-96, 0), 'central_lat': GeoCoord(39, 0)},
     'SA': {'min_lat': GeoCoord(-35, 0), 'max_lat': GeoCoord(-20, 0),
-                 'min_lon': GeoCoord(15, 0), 'max_lon': GeoCoord(35, 0),
-                 'central_long': GeoCoord(25, 0), 'central_lat': GeoCoord(-27, 30)}
+           'min_lon': GeoCoord(15, 0), 'max_lon': GeoCoord(35, 0),
+           'central_long': GeoCoord(25, 0), 'central_lat': GeoCoord(-27, 30)}
 }
-
 
 DEFAULT_SHP_PARAMS = {'face_color': 'none', 'edge_color': 'gray',
                       'border_width': 0.3, 'coast_width': 0.3}
@@ -37,7 +36,6 @@ DEFAULT_MAP_PARAMS = {'size': 18, 'color': 'black',
 DEFAULT_CBAR_PARAMS = {'size': 18, 'color': 'black',
                        'family': 'Times New Roman',
                        'title_pad': 18.0, 'title': 'dTEC (TECU)'}
-
 
 PROJECTIONS = (
     'LambertAzimuthalEqualArea',
@@ -150,4 +148,3 @@ if __name__ == '__main__':
     g = GeoAxesMap(shp_file_name='geo/cntry02.shp')
     g.create_figure()
     plt.show()
-
