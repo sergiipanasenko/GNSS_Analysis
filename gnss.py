@@ -3,7 +3,6 @@ from sys import argv
 import os
 import datetime as dt
 
-
 TIME_FORMAT = '%Y.%m.%d %H:%M:%S'
 
 
@@ -112,7 +111,10 @@ class GnssDataParser:
         self.add_dir: str | None = None
         self.coord_values: dict | None = {'lon': None, 'lon_span': None,
                                           'lat': None, 'lat_span': None}
+        self.coord_coverage: dict | None = {'min_lon': None, 'max_lon': None,
+                                            'min_lat': None, 'max_lat': None}
         self.time_values: dict | None = {'time': None, 'time_span': None}
+        self.time_coverage: dict | None = {'min_time': None, 'max_time': None}
         self.data_title: list = ['hour', 'min', 'sec', 'dTEC', 'azm', 'elm', 'gdlat', 'gdlon']
         self.data: list = []
         self.time_dtec: list = []
@@ -243,7 +245,7 @@ class GnssDataParser:
                 time_data = [dt.datetime.strptime(x, TIME_FORMAT) for x in lon_time_dtec[0]]
                 lon_data = list(map(float, lon_time_dtec[1]))
                 dtec_data = list(map(float, lon_time_dtec[2]))
-                self.time_dtec = list(zip(time_data, lon_data, dtec_data))
+                self.lon_time_dtec = list(zip(time_data, lon_data, dtec_data))
         else:
             self.lon_time_dtec = []
             current_lat = self.coord_values['lat'].get_float_degs()
@@ -272,7 +274,7 @@ class GnssDataParser:
                 time_data = [dt.datetime.strptime(x, TIME_FORMAT) for x in lat_time_dtec[0]]
                 lat_data = list(map(float, lat_time_dtec[1]))
                 dtec_data = list(map(float, lat_time_dtec[2]))
-                self.time_dtec = list(zip(time_data, lat_data, dtec_data))
+                self.lat_time_dtec = list(zip(time_data, lat_data, dtec_data))
         else:
             self.lat_time_dtec = []
             current_lon = self.coord_values['lon'].get_float_degs()
