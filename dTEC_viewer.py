@@ -119,7 +119,7 @@ class DTECViewerForm(DTEC_Window):
         self.keo_lat_axes.set_ylim((map_lim['min_lat'].degs, map_lim['max_lat'].degs))
         self.keo_lon_axes.set_ylim((map_lim['min_lon'].degs, map_lim['max_lon'].degs))
 
-        self.dTEC_parser = DTEC_handling(INPUT_DIR, OUTPUT_DIR)
+        self.dTEC_parser = DTEC_handling(OUTPUT_DIR)
         self.input_data_file = None
         self.receiver_file = None
 
