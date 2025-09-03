@@ -3,14 +3,17 @@ import argparse
 import math
 import datetime as dt
 from numpy import median
+import logging
+from concurrent.futures import ProcessPoolExecutor
 
 from gnss import GnssDataParser
-from utils.geo.geo_coords import GeoCoord
-from ui.cartopy_figure import COORDS
+from utils.geo.geo_coords import GeoCoord, COORDS
 
 LIMIT_DTEC = 1
 
-
+# Set up basic logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 class DTEC_handling:
     def __init__(self, output_dir, input_data_file=None):
         self.output_dir = output_dir
@@ -31,9 +34,11 @@ class DTEC_handling:
 
     def read_data(self):
         if not self.gnss_parser.data:
+            logging.info(f"Start reading from {self.input_data_file}.")
             if not os.path.isfile(self.input_data_file):
                 raise FileNotFoundError(f"Parsed file f'{self.input_data_file}' is not exist.")
             self.gnss_parser.read_gnss_data(self.input_data_file)
+            logging.info(f"End reading from {self.input_data_file}.")
 
     def create_time_stamp_data(self):
         time_values = self.gnss_parser.time_values
@@ -47,6 +52,7 @@ class DTEC_handling:
         lat_span = self.gnss_parser.coord_values['lat_span'].get_float_degs()
         lon_span = self.gnss_parser.coord_values['lon_span'].get_float_degs()
         time_file_name = f"{self.gnss_parser.get_lon_lat_dtec_file_stem(self.output_dir)}_av.txt"
+        logging.info(f"Start creating {time_file_name}.")
         n_lat = math.ceil((max_lat - min_lat) / lat_span)
         plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
         with open(time_file_name, mode='w') as res_file:
@@ -63,6 +69,7 @@ class DTEC_handling:
                             lat_lon_dtec = list(zip(*lat_lon_data))[2]
                             dtec_value = median(lat_lon_dtec)
                             res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
+        logging.info(f"End creating {time_file_name}.")
 
     def create_coords_stamp_data(self):
         time_list = []
@@ -86,11 +93,13 @@ class DTEC_handling:
                 dtec_list.append(c_dtec)
                 time_list.append(c_time)
         coord_file_name = f"{self.gnss_parser.get_time_dtec_file_stem(self.output_dir)}_av.txt"
+        logging.info(f"Start creating {coord_file_name}.")
         with open(coord_file_name, mode='w') as res_file:
             for line in list(zip(time_list, dtec_list)):
                 current_time_value = line[0].strftime('%Y.%m.%d %H:%M:%S')
                 current_dtec_value = line[1]
                 res_file.write(f"{current_time_value}\t{current_dtec_value}\n")
+        logging.info(f"End creating {coord_file_name}.")
 
     def create_lat_time_data(self):
         self.read_data()
@@ -110,6 +119,7 @@ class DTEC_handling:
         n_lat = math.ceil((max_lat - min_lat) / lat_span)
         plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
         lat_file_name = f"{self.gnss_parser.get_lat_time_dtec_file_stem(self.output_dir)}_av.txt"
+        logging.info(f"Start creating {lat_file_name}.")
         with open(lat_file_name, mode='w') as res_file:
             for c_time in plot_time:
                 time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2,
@@ -121,6 +131,7 @@ class DTEC_handling:
                             lat_time_dtec = list(zip(*lat_time_data))[2]
                             dtec_value = median(lat_time_dtec)
                             res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lat}\t{dtec_value}\n")
+        logging.info(f"End creating {lat_file_name}.")
 
     def create_lon_time_data(self):
         self.read_data()
@@ -140,6 +151,7 @@ class DTEC_handling:
         n_lon = math.ceil((max_lon - min_lon) / corr_lon_span)
         plot_lon = [min_lon + corr_lon_span / 2 + j * corr_lon_span for j in range(n_lon)]
         lon_file_name = f"{self.gnss_parser.get_lon_time_dtec_file_stem(self.output_dir)}_av.txt"
+        logging.info(f"Start creating {lon_file_name}.")
         with open(lon_file_name, mode='w') as res_file:
             for c_time in plot_time:
                 time_data = list(filter(lambda x: abs(x[0] - c_time) <= time_span / 2,
@@ -151,9 +163,17 @@ class DTEC_handling:
                             lon_time_dtec = list(zip(*lon_time_data))[2]
                             dtec_value = median(lon_time_dtec)
                             res_file.write(f"{c_time.strftime('%Y.%m.%d %H:%M:%S')}\t{lon}\t{dtec_value}\n")
+        logging.info(f"End creating {lon_file_name}.")
+
+    def analyze_all_coords(self):
+        pass
 
 
 if __name__ == '__main__':
+    # Set up basic logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
+
     OUTPUT_DIR = 'results/out'
     INPUT_DIR = 'results/in'
     TIME_SAMPLE = dt.timedelta(seconds=30)
@@ -205,10 +225,12 @@ if __name__ == '__main__':
         'lat': lat, 'lat_span': LAT_SPAN,
         'lon': lon, 'lon_span': LON_SPAN,
     }
-    dTEC_parser.create_time_stamp_data()
-    dTEC_parser.create_coords_stamp_data()
-    dTEC_parser.create_lat_time_data()
-    dTEC_parser.create_lon_time_data()
+    dTEC_parser.read_data()
+    with ProcessPoolExecutor() as executor:
+        executor.submit(dTEC_parser.create_time_stamp_data)
+        executor.submit(dTEC_parser.create_coords_stamp_data)
+        executor.submit(dTEC_parser.create_lat_time_data)
+        executor.submit(dTEC_parser.create_lon_time_data)
 
 
 
