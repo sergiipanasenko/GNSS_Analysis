@@ -8,16 +8,26 @@ class GeoCoord:
         return (self.degs == other.degs) and (self.mins == other.mins) and (self.secs == other.secs)
 
     def __add__(self, other):
-        sum_secs = self.secs + other.secs
         sum_mins = self.mins
         sum_degs = self.degs
-        if sum_secs >= 60:
-            sum_secs -= 60
-            sum_mins += 1
-        sum_mins += other.mins
-        if sum_mins >= 60:
-            sum_mins -= 60
-            sum_degs += 1
+        if self.degs >= 0:
+            sum_secs = self.secs + other.secs
+            if sum_secs >= 60:
+                sum_secs -= 60
+                sum_mins += 1
+            sum_mins += other.mins
+            if sum_mins >= 60:
+                sum_mins -= 60
+                sum_degs += 1
+        else:
+            sum_secs = self.secs - other.secs
+            if sum_secs < 0:
+                sum_secs += 60
+                sum_mins -= 1
+            sum_mins -= other.mins
+            if sum_mins < 0:
+                sum_mins += 60
+                sum_degs += 1
         sum_degs += other.degs
         return GeoCoord(sum_degs, sum_mins, sum_secs)
 
@@ -29,7 +39,7 @@ class GeoCoord:
             sub_secs += 60
             sub_mins -= 1
         sub_mins -= other.mins
-        if sub_mins < 60:
+        if sub_mins < 0:
             sub_mins += 60
             sub_degs -= 1
         sub_degs -= other.degs
