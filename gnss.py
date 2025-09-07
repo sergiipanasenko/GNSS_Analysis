@@ -123,7 +123,12 @@ class GnssDataParser:
         self.lon_time_dtec: list = []
         self.lat_time_dtec: list = []
 
-    def get_time_dtec_file_stem(self, store_dir, point):
+    def get_time_dtec_file_stem(self, store_dir, point=None):
+        if point is None:
+            point = {
+                'lat': self.coord_values['lat'],
+                'lon': self.coord_values['lon']
+            }
         if all((point['lon'], self.coord_values['lon_span'],
                 point['lat'], self.coord_values['lat_span'])):
             dir_name = f"{self.out_dir}/{self.add_dir}/{store_dir}"
@@ -140,7 +145,9 @@ class GnssDataParser:
         else:
             raise TypeError("Coordinates are not defined")
 
-    def get_lon_time_dtec_file_stem(self, store_dir, latitude):
+    def get_lon_time_dtec_file_stem(self, store_dir, latitude=None):
+        if latitude is None:
+            latitude = self.coord_values['lat']
         if all((latitude, self.coord_values['lat_span'])):
             dir_name = f"{self.out_dir}/{self.add_dir}/{store_dir}"
             os.makedirs(dir_name, exist_ok=True)
@@ -152,7 +159,9 @@ class GnssDataParser:
         else:
             raise TypeError("Latitudes are not defined")
 
-    def get_lat_time_dtec_file_stem(self, store_dir, longitude):
+    def get_lat_time_dtec_file_stem(self, store_dir, longitude=None):
+        if longitude is None:
+            longitude = self.coord_values['lon']
         if all((longitude, self.coord_values['lon_span'])):
             dir_name = f"{self.out_dir}/{self.add_dir}/{store_dir}"
             os.makedirs(dir_name, exist_ok=True)
@@ -164,7 +173,9 @@ class GnssDataParser:
         else:
             raise TypeError("Longitudes are not defined")
 
-    def get_lon_lat_dtec_file_stem(self, store_dir, time_stamp):
+    def get_lon_lat_dtec_file_stem(self, store_dir, time_stamp=None):
+        if time_stamp is None:
+            time_stamp = self.time_values['time']
         if all((time_stamp, self.time_values['time_span'])):
             dir_name = f"{self.out_dir}/{self.add_dir}/{store_dir}"
             os.makedirs(dir_name, exist_ok=True)
@@ -183,8 +194,10 @@ class GnssDataParser:
 
     def get_time_dtec(self, store_dir, point=None):
         if point is None:
-            point['lat'] = self.coord_values['lat']
-            point['lon'] = self.coord_values['lon']
+            point = {
+                'lat': self.coord_values['lat'],
+                'lon': self.coord_values['lon']
+            }
         current_date = self.time_coverage['min_time'].date()
         time_file_name = f"{self.get_time_dtec_file_stem(store_dir, point)}.txt"
         if os.path.isfile(time_file_name):

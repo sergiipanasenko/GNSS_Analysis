@@ -4,7 +4,7 @@ from ui.dTEC_window import DTEC_Window
 from utils.time import convert_to_hours, timedelta_to_time, time_to_timedelta
 from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAMS, PROJECTIONS
 from utils.geo.geo_coords import GeoCoord
-from dTEC import DTEC_handling
+from dTEC import DTEC_handling, COORD_DIR, TIME_DIR, LAT_DIR, LON_DIR
 from gnss import TIME_FORMAT
 
 import cartopy.crs as ccrs
@@ -17,6 +17,7 @@ import math
 import os
 import array
 import datetime as dt
+from concurrent.futures import ProcessPoolExecutor
 
 OUTPUT_DIR = 'results/out'
 INPUT_DIR = 'results/in'
@@ -140,9 +141,9 @@ class DTECViewerForm(DTEC_Window):
             self.update_time_values()
             self.update_data_values()
             self.plot_time_stamp_data()
-            self.plot_coords_stamp_data()
-            self.plot_lat_time_data()
-            self.plot_lon_time_data()
+            # self.plot_coords_stamp_data()
+            # self.plot_lat_time_data()
+            # self.plot_lon_time_data()
 
     def update_coords(self):
         self.combo_region.setCurrentIndex(0)
@@ -291,39 +292,43 @@ class DTECViewerForm(DTEC_Window):
         self.map_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
         lat_span = self.data_coords['lat_span'].get_float_degs()
         lon_span = self.data_coords['lon_span'].get_float_degs()
-        time_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(OUTPUT_DIR)}_av.txt"
-        if not os.path.isfile(time_file_name):
-            self.dTEC_parser.create_time_stamp_data()
-        with open(time_file_name, mode='r') as res_file:
-            raw_data = [line.split('\t') for line in res_file]
-            for data in raw_data:
-                lon_value = float(data[1])
-                lat_value = float(data[0])
-                dtec_value = float(data[2])
-                corr_lon_span = lon_span / math.cos(math.radians(lat_value))
-                c = self.map_color_bar.cmap(norm(dtec_value))
-                self.map_axes.add_patch(Rectangle(xy=(lon_value - corr_lon_span / 2, lat_value - lat_span / 2),
-                                                  width=corr_lon_span, height=lat_span,
-                                                  edgecolor='none',
-                                                  facecolor=c,
-                                                  transform=ccrs.PlateCarree()))
-        current_time = self.dTEC_parser.gnss_parser.time_values['time'].strftime("%Y-%m-%d   %H:%M:%S")
-        title = f"{current_time} UT"
-        # current_lat = float(self.lineEdit_12.text())
-        # current_lon = float(self.lineEdit_13.text())
-        # self.space_axes.scatter(current_lon, current_lat, marker='o', s=30, color='black',
-        #                         transform=ccrs.PlateCarree())
-        # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
-        #                          transform=ccrs.PlateCarree())
-        self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
-                                           family='Times New Roman', size=16)
-        self.map_widget.canvas.draw()
-        fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(OUTPUT_DIR)}.png"
-        # if not os.path.isfile(fig_file_name):
-        self.map_widget.canvas.figure.savefig(dpi=300, fname=fig_file_name)
+        while self.dTEC_parser.gnss_parser.time_values['time'] <= self.dTEC_parser.gnss_parser.time_coverage['max_time']:
+            time_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(TIME_DIR)}_av.txt"
+            if not os.path.isfile(time_file_name):
+                self.dTEC_parser.create_time_stamp_data()
+            with open(time_file_name, mode='r') as res_file:
+                raw_data = [line.split('\t') for line in res_file]
+                for data in raw_data:
+                    lon_value = float(data[1])
+                    lat_value = float(data[0])
+                    dtec_value = float(data[2])
+                    corr_lon_span = lon_span / math.cos(math.radians(lat_value))
+                    c = self.map_color_bar.cmap(norm(dtec_value))
+                    self.map_axes.add_patch(Rectangle(xy=(lon_value - corr_lon_span / 2, lat_value - lat_span / 2),
+                                                      width=corr_lon_span, height=lat_span,
+                                                      edgecolor='none',
+                                                      facecolor=c,
+                                                      transform=ccrs.PlateCarree()))
+            current_time = self.dTEC_parser.gnss_parser.time_values['time'].strftime("%Y-%m-%d   %H:%M:%S")
+            title = f"{current_time} UT"
+            # current_lat = float(self.lineEdit_12.text())
+            # current_lon = float(self.lineEdit_13.text())
+            # self.space_axes.scatter(current_lon, current_lat, marker='o', s=30, color='black',
+            #                         transform=ccrs.PlateCarree())
+            # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
+            #                          transform=ccrs.PlateCarree())
+            self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
+                                               family='Times New Roman', size=16)
+            self.map_widget.canvas.draw()
+            fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(f'{TIME_DIR}/fig')}.png"
+            # if not os.path.isfile(fig_file_name):
+            self.map_widget.canvas.figure.savefig(dpi=300, fname=fig_file_name)
+            self.dTEC_parser.gnss_parser.time_values['time'] += dt.timedelta(minutes=1)
+            self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
+                                               family='Times New Roman', size=16, color='white')
 
     def plot_coords_stamp_data(self):
-        coord_file_name = f"{self.dTEC_parser.gnss_parser.get_time_dtec_file_stem(OUTPUT_DIR)}_av.txt"
+        coord_file_name = f"{self.dTEC_parser.gnss_parser.get_time_dtec_file_stem(COORD_DIR)}_av.txt"
         if not os.path.isfile(coord_file_name):
             self.dTEC_parser.create_coords_stamp_data()
         with open(coord_file_name, mode='r') as res_file:
@@ -338,7 +343,7 @@ class DTECViewerForm(DTEC_Window):
         graph = self.time_axes.scatter(x_time_value, dtec_value, s=0.8, color='blue')
         self.time_widget.axes_map.graphs.append(graph)
         self.time_widget.canvas.draw()
-        fig_file_name = f"{self.dTEC_parser.gnss_parser.get_time_dtec_file_stem(OUTPUT_DIR)}.png"
+        fig_file_name = f"{self.dTEC_parser.gnss_parser.get_time_dtec_file_stem(f'{COORD_DIR}/fig')}.png"
 
         # if not os.path.isfile(fig_file_name):
         self.time_widget.canvas.figure.savefig(dpi=300, fname=fig_file_name)
@@ -351,7 +356,7 @@ class DTECViewerForm(DTEC_Window):
         self.keo_lat_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
         x_time_span = TIME_SAMPLE.seconds / 3600.0
         lat_span = self.data_coords['lat_span'].get_float_degs()
-        lat_file_name = f"{self.dTEC_parser.gnss_parser.get_lat_time_dtec_file_stem(OUTPUT_DIR)}_av.txt"
+        lat_file_name = f"{self.dTEC_parser.gnss_parser.get_lat_time_dtec_file_stem(LON_DIR)}_av.txt"
         if not os.path.isfile(lat_file_name):
             self.dTEC_parser.create_lat_time_data()
         with open(lat_file_name, mode='r') as res_file:
@@ -367,7 +372,7 @@ class DTECViewerForm(DTEC_Window):
                                                       edgecolor='none',
                                                       facecolor=c))
         self.keo_lat_widget.canvas.draw()
-        fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lat_time_dtec_file_stem(OUTPUT_DIR)}.png"
+        fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lat_time_dtec_file_stem(f'{LON_DIR}/fig')}.png"
         # if not os.path.isfile(fig_file_name):
         self.keo_lat_widget.canvas.figure.savefig(dpi=300, fname=fig_file_name)
 
@@ -379,7 +384,7 @@ class DTECViewerForm(DTEC_Window):
         self.keo_lon_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
         x_time_span = TIME_SAMPLE.seconds / 3600.0
         corr_lon_span = self.dTEC_parser.get_corr_lon_span()
-        lon_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_time_dtec_file_stem(OUTPUT_DIR)}_av.txt"
+        lon_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_time_dtec_file_stem(LAT_DIR)}_av.txt"
         if not os.path.isfile(lon_file_name):
             self.dTEC_parser.create_lon_time_data()
         with open(lon_file_name, mode='r') as res_file:
@@ -395,12 +400,6 @@ class DTECViewerForm(DTEC_Window):
                                                       edgecolor='none',
                                                       facecolor=c))
         self.keo_lon_widget.canvas.draw()
-        fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_time_dtec_file_stem(OUTPUT_DIR)}.png"
+        fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_time_dtec_file_stem(f'{LAT_DIR}/fig')}.png"
         # if not os.path.isfile(fig_file_name):
         self.keo_lon_widget.canvas.figure.savefig(dpi=300, fname=fig_file_name)
-
-    def update_figures(self):
-        self.set_coords_time()
-        self.plot_time_stamp_data()
-        self.plot_coords_stamp_data()
-        print("Figure updating is completed.")
