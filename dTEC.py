@@ -2,7 +2,7 @@ import os
 import argparse
 import math
 import datetime as dt
-from numpy import median
+from numpy import median, mean
 import logging
 from concurrent.futures import ProcessPoolExecutor
 
@@ -16,6 +16,7 @@ COORD_DIR = 'Map/1'
 LAT_DIR = 'Lat/1'
 LON_DIR = 'Lon/1'
 LSTID_DIR = 'LSTID/1'
+LSTID_TIME_DIR = 'LSTID_TIME/1'
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s',
@@ -197,12 +198,13 @@ class DTEC_handling:
                     self.gnss_parser.coord_values['lon'] = lon
                     point['lon'] = lon
                     time_node_file = f'{self.gnss_parser.get_time_dtec_file_stem(time_node_dir, point)}_av.txt'
-                    with open(time_node_file, mode='r') as in_file:
-                        for line in in_file:
-                            if time_str in line:
-                                dtec_value = line.split()[-1]
-                                out_file.write(f"{lat.get_float_degs()}\t{lon.get_float_degs()}\t{dtec_value}\n")
-                                break
+                    if os.path.isfile(time_node_file):
+                        with open(time_node_file, mode='r') as in_file:
+                            for line in in_file:
+                                if time_str in line:
+                                    dtec_value = line.split()[-1]
+                                    out_file.write(f"{lat.get_float_degs()}\t{lon.get_float_degs()}\t{dtec_value}\n")
+                                    break
                     lon += GeoCoord(1,0)
                 lat += GeoCoord(1, 0)
 
@@ -242,6 +244,55 @@ class DTEC_handling:
                         dtec_value = median(lstid_dtec)
                         res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
 
+    def get_lstid_time(self, point=None, radius=500):
+        if point is None:
+            point = {
+                'lat': GeoCoord(50, 0),
+                'lon': GeoCoord(10, 0)
+            }
+        spec_lat = point['lat'].get_float_degs()
+        spec_lon = point['lon'].get_float_degs()
+        time_coverage = self.gnss_parser.time_coverage
+        lat = dTEC_parser.gnss_parser.coord_coverage['min_lat']
+        lat_max = dTEC_parser.gnss_parser.coord_coverage['max_lat']
+        lon_max = dTEC_parser.gnss_parser.coord_coverage['max_lon']
+        dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{LSTID_TIME_DIR}"
+        os.makedirs(dir_name, exist_ok=True)
+        lstid_time_file = f'{self.gnss_parser.get_time_dtec_file_stem(LSTID_TIME_DIR, point)}_av.txt'
+        map_node_dir = f'{COORD_DIR}/Nodes'
+        time_stamp = time_coverage['min_time']
+        time_max = time_coverage['max_time']
+        data =dict()
+        while lat <= lat_max:
+            lat_float = lat.get_float_degs()
+            self.gnss_parser.coord_values['lat'] = lat
+            lon = dTEC_parser.gnss_parser.coord_coverage['min_lon']
+            while lon <= lon_max:
+                lon_float = lon.get_float_degs()
+                self.gnss_parser.coord_values['lon'] = lon
+                lstid_map_file = f'{self.gnss_parser.get_time_dtec_file_stem(map_node_dir)}_av.txt'
+                dist, _ = get_distance_azimuth(spec_lat, spec_lon, lat_float, lon_float)
+                if dist <= radius:
+                    file_data = []
+                    with open(lstid_map_file, mode='r') as in_file:
+                        for row in in_file:
+                            file_data.append(row.split('\t'))
+                    data[(lat_float, lon_float)] = file_data
+                lon += GeoCoord(1, 0)
+            lat += GeoCoord(1, 0)
+        with open(lstid_time_file, mode='w') as out_file:
+            while time_stamp <= time_max:
+                time_str = time_stamp.strftime(TIME_FORMAT)
+                lstid_time_dtec = []
+                for key in data:
+                    for row in data[key]:
+                        if row[0] == time_str:
+                            lstid_time_dtec.append(float(row[1]))
+                            break
+                if lstid_time_dtec:
+                    out_file.write(f"{time_str}\t{median(lstid_time_dtec)}\n")
+                time_stamp += dt.timedelta(seconds=30)
+
 
 if __name__ == '__main__':
     # Set up basic logging
@@ -270,9 +321,14 @@ if __name__ == '__main__':
                         default='50:00', type=str)
     parser.add_argument("-i", "--longitude", help="Specific longitude in format DD:MM.",
                         default='14:36', type=str)
+    parser.add_argument("-L", "--lstid_radius", help="Radius value for retrieval LSTIDs (km).",
+                        default=500, type=int)
+    parser.add_argument("-M", "--mstid_radius", help="Radius value for retrieval MSTIDs (km).",
+                        default=100, type=int)
     parser.add_argument("-a", "--all_times", help="Analysis for all times.", action='store_true')
     parser.add_argument("-s", "--assemble", help="Assemble map from nodes.", action='store_true')
-    parser.add_argument("-l", "--lstids", help="Retrieve LSTID signatures.", action='store_true')
+    parser.add_argument("-l", "--lstid_map", help="Retrieve LSTID signatures in space domain.", action='store_true')
+    parser.add_argument("-q", "--lstid_time", help="Retrieve LSTID signatures in time domain.", action='store_true')
     parser.add_argument("-p", "--specific", help="Analysis for specific parameters.", action='store_true')
 
     args = parser.parse_args()
@@ -299,20 +355,27 @@ if __name__ == '__main__':
         'max_lon': COORDS[args.region]['max_lon'],
     }
     dTEC_parser.gnss_parser.time_values = {'time': time, 'time_span': TIME_SAMPLE}
-    # dTEC_parser.read_data()
     dTEC_parser.gnss_parser.coord_values = {
         'lat': lat, 'lat_span': LAT_SPAN,
         'lon': lon, 'lon_span': LON_SPAN,
     }
+
+    if args.specific or args.all_times:
+        dTEC_parser.read_data()
+
     if args.specific:
         with ProcessPoolExecutor() as executor:
             executor.submit(dTEC_parser.create_time_stamp_data)
             executor.submit(dTEC_parser.create_coords_stamp_data)
             executor.submit(dTEC_parser.create_lat_time_data)
             executor.submit(dTEC_parser.create_lon_time_data)
+
+    lat_min = dTEC_parser.gnss_parser.coord_coverage['min_lat']
+    lat_max = dTEC_parser.gnss_parser.coord_coverage['max_lat']
+    lon_min = dTEC_parser.gnss_parser.coord_coverage['min_lon']
+    lon_max = dTEC_parser.gnss_parser.coord_coverage['max_lon']
+
     if args.all_times:
-        lat_min = dTEC_parser.gnss_parser.coord_coverage['min_lat']
-        lat_max = dTEC_parser.gnss_parser.coord_coverage['max_lat']
         latitudes = []
         current_lat = lat_min
         while current_lat <= lat_max:
@@ -320,19 +383,34 @@ if __name__ == '__main__':
             current_lat += GeoCoord(1, 0)
         with ProcessPoolExecutor() as executor:
             executor.map(dTEC_parser.analyze_all_coords, latitudes)
-    current_time = dt.datetime(year=2023, month=2, day=27, hour=12, minute=0)
-    radius = 100
-    time = dt.datetime(year=2023, month=2, day=27, hour=0, minute=0)
-    time_max = dt.datetime(year=2023, month=2, day=27, hour=23, minute=59)
-    if args.assemble:
-        while time <= time_max:
-            dTEC_parser.assemble_map(time)
-            time += dt.timedelta(minutes=1)
-    if args.lstids:
-        while time <= time_max:
-            dTEC_parser.get_lstid_map(time)
-            time += dt.timedelta(minutes=1)
 
+    c_time = dt.datetime(year=year, month=month, day=day, hour=0, minute=0)
+    time_max = dt.datetime(year=year, month=month, day=day, hour=23, minute=59)
+
+    if args.assemble:
+        while c_time <= time_max:
+            dTEC_parser.assemble_map(c_time)
+            c_time += dt.timedelta(minutes=1)
+
+    c_time = dt.datetime(year=year, month=month, day=day, hour=0, minute=0)
+
+    if args.lstid_map:
+        while c_time <= time_max:
+            dTEC_parser.get_lstid_map(c_time, radius=args.lstid_radius)
+            c_time += dt.timedelta(minutes=1)
+
+    if args.lstid_time:
+        lat = lat_min
+        while lat <= lat_max:
+            lon = lon_min
+            while lon <= lon_max:
+                point = {
+                    'lat': lat,
+                    'lon': lon
+                }
+                dTEC_parser.get_lstid_time(point)
+                lon += GeoCoord(1,0)
+            lat += GeoCoord(1, 0)
 
 
 

@@ -161,6 +161,7 @@ class DTECViewerForm(DTEC_Window):
         s_width, s_height = self.map_widget.canvas.figure.get_size_inches()
         self.map_widget.axes_map = GeoAxesMap(coords=coords, is_cbar=True)
         self.map_widget.axes_map.create_figure()
+        del self.map_widget.canvas.figure
         self.map_widget.canvas.figure = self.map_widget.axes_map.figure
         self.map_color_bar = self.map_widget.axes_map.color_bar
         self.map_widget.canvas.figure.set_size_inches(s_width, s_height)
@@ -292,7 +293,7 @@ class DTECViewerForm(DTEC_Window):
         self.map_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
         lat_span = self.data_coords['lat_span'].get_float_degs()
         lon_span = self.data_coords['lon_span'].get_float_degs()
-        while self.dTEC_parser.gnss_parser.time_values['time'] <= self.dTEC_parser.gnss_parser.time_coverage['max_time']:
+        while self.dTEC_parser.gnss_parser.time_values['time'] <= self.data_time['end_time']:
             time_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(TIME_DIR)}_av.txt"
             if not os.path.isfile(time_file_name):
                 self.dTEC_parser.create_time_stamp_data()
@@ -319,7 +320,7 @@ class DTECViewerForm(DTEC_Window):
             #                          transform=ccrs.PlateCarree())
             self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
                                                family='Times New Roman', size=16)
-            self.map_widget.canvas.draw()
+            # self.map_widget.canvas.draw()
             fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(f'{TIME_DIR}/fig')}.png"
             # if not os.path.isfile(fig_file_name):
             self.map_widget.canvas.figure.savefig(dpi=300, fname=fig_file_name)
