@@ -2,6 +2,7 @@ import numpy as np
 from scipy import interpolate
 from scipy.signal import savgol_filter, windows
 from scipy.special import erf
+from scipy.signal import correlate, correlation_lags
 import matplotlib.pyplot as plt
 
 
@@ -180,6 +181,28 @@ def arg_loc_max(x):
 
 def arg_loc_min(x):
     return np.where(np.append(np.nan, np.diff(np.sign(np.append(np.nan, np.diff(x))))) == 2)[0] - 1
+
+
+def estimate_periods_lags(sig1, sig2, window=144, delta_t=5):
+    period_list = []
+    lag_list = []
+    for i in range(len(sig1)):
+        left_ind, right_ind = define_indexes(i, sig1, window)
+        s1 = sig1[left_ind:right_ind]
+        s2 = sig2[left_ind:right_ind]
+        s1_s2_corr = correlate(s1, s2)
+        lags = correlation_lags(s1.size, s2.size, mode="full")
+        max_lags = lags[arg_loc_max(s1_s2_corr)]
+        min_lags = lags[arg_loc_min(s1_s2_corr)]
+        period_max = (max_lags[-1] - max_lags[0]) / (len(max_lags) - 1)
+        period_min = (min_lags[-1] - min_lags[0]) / (len(min_lags) - 1)
+        period = delta_t * int(np.round((period_min + period_max) / 2))
+        period_list.append(period)
+
+        max_ind = np.argmin(np.abs(max_lags))
+
+        lag_list.append(delta_t * max_lags[max_ind])
+    return np.array(period_list), np.array(lag_list)
 
 
 if __name__ == '__main__':

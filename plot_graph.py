@@ -4,8 +4,8 @@ import datetime as dt
 
 
 # file_name = 'Sites.txt'
-file_name1 = r"c:\Users\Sergii\Dell_D\Coding\Python\PyCharm\GNSS_Analysis\results\test\EU\2023\2023-04-01\7200\LSTID_TIME\1\10d0m_0d45m_lon_50d0m_0d45m_lat_av.txt"
-file_name2 = r"c:\Users\Sergii\Dell_D\Coding\Python\PyCharm\GNSS_Analysis\results\test\EU\2023\2023-04-01\7200\Map\1\Nodes\10d0m_0d45m_lon_50d0m_0d45m_lat_av.txt"
+file_name1 = r"c:\Users\Sergii\Dell_D\Coding\Python\PyCharm\GNSS_Analysis\results\test\EU\2023\2023-04-01\7200\LSTID_TIME\1\10d0m_0d45m_lon_48d0m_0d45m_lat_av.txt"
+file_name2 = r"c:\Users\Sergii\Dell_D\Coding\Python\PyCharm\GNSS_Analysis\results\test\EU\2023\2023-04-01\7200\LSTID_TIME\1\10d0m_0d45m_lon_52d0m_0d45m_lat_av.txt"
 file_names = (file_name2, file_name1)
 for file_name in file_names:
     time = []
