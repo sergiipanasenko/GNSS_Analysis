@@ -13,13 +13,14 @@ from utils.analysis import (get_distance_azimuth, interp_data, use_sigma_criteri
                             estimate_phase_velocity, estimate_periods_lags, bandpass_filter)
 
 LIMIT_DTEC = 1
-TIME_DIR = 'Time/1'
-COORD_DIR = 'Map/1'
+TIME_DIR = 'Time/All'
+COORD_DIR = 'Map/All'
 LAT_DIR = 'Lat/1'
 LON_DIR = 'Lon/1'
-LSTID_DIR = 'LSTID/1'
-LSTID_TIME_DIR = 'LSTID_TIME/1'
-LSTID_VEL_DIR = 'LSTID_VEL/1'
+LSTID_MAP_DIR = 'Map/LSTID'
+LSTID_TIME_ALL_DIR = 'Time/LSTID/All'
+LSTID_MAP_ALL_DIR = 'Map/LSTID/All'
+LSTID_MAP_VEL_DIR = 'Map/LSTID/Vel'
 
 # Set up basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s',
@@ -213,9 +214,9 @@ class DTEC_handling:
 
     def get_lstid_map(self, time_stamp: dt.datetime, radius=500):
         coord_coverage = self.gnss_parser.coord_coverage
-        dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{LSTID_DIR}"
+        dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{LSTID_TIME_ALL_DIR}"
         os.makedirs(dir_name, exist_ok=True)
-        lstid_file = f'{self.gnss_parser.get_lon_lat_dtec_file_stem(LSTID_DIR, time_stamp)}_av.txt'
+        lstid_file = f'{self.gnss_parser.get_lon_lat_dtec_file_stem(LSTID_TIME_ALL_DIR, time_stamp)}_av.txt'
         time_node_dir = f'{TIME_DIR}/Nodes'
         time_node_file = f'{self.gnss_parser.get_lon_lat_dtec_file_stem(time_node_dir, time_stamp)}_av.txt'
         data = []
@@ -254,9 +255,9 @@ class DTEC_handling:
         lat = dTEC_parser.gnss_parser.coord_coverage['min_lat']
         lat_max = dTEC_parser.gnss_parser.coord_coverage['max_lat']
         lon_max = dTEC_parser.gnss_parser.coord_coverage['max_lon']
-        dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{LSTID_TIME_DIR}"
+        dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{LSTID_MAP_ALL_DIR}"
         os.makedirs(dir_name, exist_ok=True)
-        lstid_time_file = f'{self.gnss_parser.get_time_dtec_file_stem(LSTID_TIME_DIR, point)}_av.txt'
+        lstid_time_file = f'{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, point)}_av.txt'
         map_node_dir = f'{COORD_DIR}/Nodes'
         time_stamp = time_coverage['min_time']
         time_max = time_coverage['max_time']
@@ -291,31 +292,83 @@ class DTEC_handling:
                     out_file.write(f"{time_str}\t{median(lstid_time_dtec)}\n")
                 time_stamp += dt.timedelta(seconds=30)
 
-    def parse_time_dtec_file(self, input_file, time_orig):
+    def get_filtered_lstid_time(self, point, periods=None):
+        time_coverage = self.gnss_parser.time_coverage
+        input_file = f'{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, point)}_av.txt'
+        if periods is None:
+            store_dir = f'{LSTID_MAP_DIR}/Interp'
+        else:
+            store_dir = f'{LSTID_MAP_DIR}/{periods[0]}-{periods[1]}min'
+        filtered_file = f'{self.gnss_parser.get_time_dtec_file_stem(store_dir, point)}_av.txt'
+        time = time_coverage['min_time']
+        time_max = time_coverage['max_time']
+        time_orig = []
+        while time <= time_max:
+            time_orig.append(time)
+            time += dt.timedelta(seconds=30)
         raw_data = []
         file_time = []
         file_dtec = []
-        try:
-            with open(input_file, mode='r') as in_file:
-                for line in in_file:
-                    raw_data.append(line.split('\t'))
+        with open(input_file, mode='r') as in_file:
+            for line in in_file:
+                raw_data.append(line.split('\t'))
             for row in raw_data:
                 file_time.append(dt.datetime.strptime(row[0], TIME_FORMAT))
                 file_dtec.append(float(row[1]))
-        except Exception:
-            raise FileNotFoundError(f'File {input_file} does not exist.')
-        if file_time[0] != time_orig[0]:
-            file_time.insert(0, time_orig[0])
-            file_dtec.insert(0, 0)
-        if file_time[-1] != time_orig[-1]:
-            file_time.append(time_orig[-1])
-            file_dtec.append(0)
-        file_dtec_corr = use_sigma_criteria(file_dtec, window=240)
-        file_dtec_interp = interp_data(file_time, file_dtec_corr, time_orig)
-        file_dtec_filter = bandpass_filter(file_dtec_interp, 20, 480)
-        return file_dtec_filter
+        if file_time:
+            if file_time[0] != time_orig[0]:
+                file_time.insert(0, time_orig[0])
+                file_dtec.insert(0, 0)
+            if file_time[-1] != time_orig[-1]:
+                file_time.append(time_orig[-1])
+                file_dtec.append(0)
+            file_dtec_corr = use_sigma_criteria(file_dtec, window=240)
+            file_dtec_interp = interp_data(file_time, file_dtec_corr, time_orig, k=1)
+            if periods is None:
+                output_dtec = file_dtec_interp
+            else:
+                min_period = 2 * periods[0]
+                max_period = 2 * periods[1]
+                output_dtec = bandpass_filter(file_dtec_interp, min_period, max_period)
+            with open(filtered_file, mode='w') as out_file:
+                for i in range(len(time_orig)):
+                    time_str = time_orig[i].strftime(TIME_FORMAT)
+                    out_file.write(f'{time_str}\t{output_dtec[i]}\n')
 
     def get_lstid_velocity(self, node):
+        def plot_lstid_params():
+            fig, ax = plt.subplots(5, 1)
+            fig.set_size_inches(9, 15)
+            ax[0].set_title('LSTID characteristics on 2023-04-01')
+            ax[0].plot(time_orig, prev_lat_dtec,
+                       label=f"{prev_lat_node['lat'].degs} N, {prev_lat_node['lon'].degs} E")
+            ax[0].plot(time_orig, next_lat_dtec,
+                       label=f"{next_lat_node['lat'].degs} N, {next_lat_node['lon'].degs} E")
+            ax[0].set_ylabel('dTEC (TECU)')
+            ax[0].legend()
+            ax[1].plot(time_orig, prev_lon_dtec,
+                       label=f"{prev_lon_node['lat'].degs} N, {prev_lon_node['lon'].degs} E")
+            ax[1].plot(time_orig, next_lon_dtec,
+                       label=f"{next_lon_node['lat'].degs} N, {next_lon_node['lon'].degs} E")
+            ax[1].set_ylabel('dTEC (TECU)')
+            ax[1].legend()
+            ax[2].scatter(time_vel, lat_period_vel, label='Latitude', s=2)
+            ax[2].scatter(time_vel, lon_period_vel, label='Longitude', s=2)
+            ax[2].set_ylabel('Main period (min)')
+            ax[2].grid(axis='y')
+            ax[2].legend()
+            ax[3].scatter(time_vel, abs_velocity, label=f"{node['lat'].degs} N, {node['lon'].degs} E", s=2)
+            ax[3].grid(axis='y')
+            ax[3].set_ylabel('Velocity (m/s)')
+            ax[3].legend()
+            ax[4].scatter(time_vel, azimuth, label=f"{node['lat'].degs} N, {node['lon'].degs} E", s=2)
+            ax[4].set_ylabel('Azimuth (deg)')
+            ax[4].grid(axis='y')
+            ax[4].legend()
+            ax[4].set_xlabel('Time (UT)')
+            plt.tight_layout()
+            plt.show()
+
         prev_lat_node = {
             'lat': node['lat'] - GeoCoord(2, 0),
             'lon': node['lon']
@@ -332,10 +385,10 @@ class DTEC_handling:
             'lat': node['lat'],
             'lon': node['lon'] + GeoCoord(2, 0)
         }
-        prev_lat_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_TIME_DIR, prev_lat_node)}_av.txt"
-        next_lat_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_TIME_DIR, next_lat_node)}_av.txt"
-        prev_lon_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_TIME_DIR, prev_lon_node)}_av.txt"
-        next_lon_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_TIME_DIR, next_lon_node)}_av.txt"
+        prev_lat_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, prev_lat_node)}_av.txt"
+        next_lat_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, next_lat_node)}_av.txt"
+        prev_lon_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, prev_lon_node)}_av.txt"
+        next_lon_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, next_lon_node)}_av.txt"
         c_time = self.gnss_parser.time_coverage['min_time']
         time_max = self.gnss_parser.time_coverage['max_time']
         time_orig = []
@@ -349,9 +402,9 @@ class DTEC_handling:
         next_lon_dtec = self.parse_time_dtec_file(next_lon_node_file, time_orig)
 
         lat_period_list, lat_lag_list = estimate_periods_lags(next_lat_dtec, prev_lat_dtec,
-                                                              window=360, delta_t=0.5)
+                                                              window=300, delta_t=0.5)
         lon_period_list, lon_lag_list = estimate_periods_lags(next_lon_dtec, prev_lon_dtec,
-                                                              window=360, delta_t=0.5)
+                                                              window=300, delta_t=0.5)
         dist_lat, azm_lat = get_distance_azimuth(prev_lat_node['lat'].get_float_degs(),
                                                  prev_lat_node['lon'].get_float_degs(),
                                                  next_lat_node['lat'].get_float_degs(),
@@ -360,28 +413,28 @@ class DTEC_handling:
                                                  prev_lon_node['lon'].get_float_degs(),
                                                  next_lon_node['lat'].get_float_degs(),
                                                  next_lon_node['lon'].get_float_degs())
-        print(dist_lat, azm_lat)
-        print(dist_lon, azm_lon)
+        lstid_vel_file = f'{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_VEL_DIR, node)}_av.txt'
         abs_velocity = []
         azimuth = []
         time_vel = []
         lat_period_vel = []
         lon_period_vel = []
-        for i in range(len(time_orig)):
-            set_1 = (dist_lat, azm_lat, lat_lag_list[i])
-            set_2 = (dist_lon, azm_lon, lon_lag_list[i])
-            vel, azm = estimate_phase_velocity(set_1, set_2)
-            vel *= (1000 / 60)
-            if vel < 1000:
-                time_vel.append(time_orig[i])
-                abs_velocity.append(vel)
-                azimuth.append(azm)
-                lat_period_vel.append(lat_period_list[i])
-                lon_period_vel.append(lon_period_list[i])
-        plt.scatter(time_vel, abs_velocity, label='lat')
-        plt.scatter(time_vel, azimuth, label='lon')
-        plt.legend()
-        plt.show()
+        with open(lstid_vel_file, mode='w') as out_file:
+            for i in range(len(time_orig)):
+                set_1 = (dist_lat, azm_lat, lat_lag_list[i])
+                set_2 = (dist_lon, azm_lon, lon_lag_list[i])
+                vel, azm = estimate_phase_velocity(set_1, set_2)
+                vel *= (1000 / 60)
+                period = (lat_period_list[i] + lon_period_list[i]) / 2
+                time_str = time_orig[i].strftime(TIME_FORMAT)
+                out_file.write(f'{time_str}\t{vel}\t{azm}\t{period}\n')
+                # if vel < 1000:
+                #     time_vel.append(time_orig[i])
+                #     abs_velocity.append(vel)
+                #     azimuth.append(azm)
+                #     lat_period_vel.append(lat_period_list[i])
+                #     lon_period_vel.append(lon_period_list[i])
+        # plot_lstid_params()
 
 
 if __name__ == '__main__':
@@ -415,6 +468,8 @@ if __name__ == '__main__':
                         default=500, type=int)
     parser.add_argument("-M", "--mstid_radius", help="Radius value for retrieval MSTIDs (km).",
                         default=100, type=int)
+    parser.add_argument("-f", "--filter", help="Filtered time variations.",
+                        default=(30, 120), type=tuple)
     parser.add_argument("-a", "--all_times", help="Analysis for all times.", action='store_true')
     parser.add_argument("-s", "--assemble", help="Assemble map from nodes.", action='store_true')
     parser.add_argument("-l", "--lstid_map", help="Retrieve LSTID signatures in space domain.", action='store_true')
@@ -422,6 +477,7 @@ if __name__ == '__main__':
     parser.add_argument("-p", "--specific", help="Analysis for specific parameters.", action='store_true')
     parser.add_argument("-V", "--lstid_velocity", help="Evaluation of LSTID phase velocity.", action='store_true')
     parser.add_argument("-v", "--mstid_velocity", help="Evaluation of MSTID phase velocity.", action='store_true')
+    parser.add_argument("-F", "--lstid_filter", help="Evaluation of filtered LSTID variations.", action='store_true')
 
     args = parser.parse_args()
     year = int(args.date[:4])
@@ -504,10 +560,30 @@ if __name__ == '__main__':
                 lon += GeoCoord(1,0)
             lat += GeoCoord(1, 0)
 
+    if args.lstid_filter:
+        lat = lat_min
+        while lat <= lat_max:
+            lon = lon_min
+            while lon <= lon_max:
+                point = {
+                    'lat': lat,
+                    'lon': lon
+                }
+                dTEC_parser.get_filtered_lstid_time(point, args.filter)
+                lon += GeoCoord(1,0)
+            lat += GeoCoord(1, 0)
+
     if args.lstid_velocity:
-        node = {
-            'lat': GeoCoord(50,0),
-            'lon': GeoCoord(-5,0),
-        }
-        dTEC_parser.get_lstid_velocity(node)
+        lat = lat_min + GeoCoord(2,0)
+        while lat <= lat_max - GeoCoord(2, 0):
+            lon = lon_min + GeoCoord(2, 0)
+            while lon <= lon_max - GeoCoord(2, 0):
+                node = {
+                    'lat': lat,
+                    'lon': lon
+                }
+                dTEC_parser.get_lstid_velocity(node)
+                lon += GeoCoord(1, 0)
+            lat += GeoCoord(1, 0)
+
 

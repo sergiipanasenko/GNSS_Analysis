@@ -78,26 +78,33 @@ def use_sigma_criteria(signal, window=12, k_coef=2.5):
     return s3
 
 
-def bandpass_filter(signal, min_period, max_period, trend_removal=False, norm=False):
+def bandpass_filter(signal, min_period=None, max_period=None, trend_removal=False, norm=False):
     def u(x, a, L):
         b = erf(np.pi * a)
         return (2. / (b * L)) * np.exp(-x * x / (a * a * L * L)) * np.sinc(2. * x / L)
-
     if trend_removal:
         trend_period = int(1.5 * max_period)
         trend = estimate_mean(signal, window=trend_period, order=2)
         signal = signal - trend
         if norm:
             signal = signal / (trend + 1E-7)
-    a = 40
-    s_length = len(signal)
-    x = np.arange(-s_length + 1, s_length)
-    y = u(x, a, min_period) - u(x, a, max_period)
-    s2 = []
-    for j in range(0, s_length):
-        val = np.sum([signal[j - k] * y[s_length + k - 1] for k in range(j - s_length + 1, j + 1)])
-        s2.append(val)
-    return np.array(s2)
+    if (min_period is None) and (max_period is None):
+        return np.array(signal)
+    else:
+        a = 40
+        s_length = len(signal)
+        x = np.arange(-s_length + 1, s_length)
+        if max_period is None:
+            y = u(x, a, min_period)
+        elif min_period is None:
+            y = signal - u(x, a, max_period)
+        else:
+            y = u(x, a, min_period) - u(x, a, max_period)
+        s2 = []
+        for j in range(0, s_length):
+            val = np.sum([signal[j - k] * y[s_length + k - 1] for k in range(j - s_length + 1, j + 1)])
+            s2.append(val)
+        return np.array(s2)
 
 
 def get_distance_azimuth(lat1, long1, lat2, long2):
@@ -196,7 +203,10 @@ def estimate_periods_lags(sig1, sig2, window=144, delta_t=5):
         min_lags = lags[arg_loc_min(s1_s2_corr)]
         period_max = (max_lags[-1] - max_lags[0]) / (len(max_lags) - 1)
         period_min = (min_lags[-1] - min_lags[0]) / (len(min_lags) - 1)
-        period = delta_t * int(np.round((period_min + period_max) / 2))
+        try:
+            period = delta_t * int(np.round((period_min + period_max) / 2))
+        except Exception:
+            period = -1
         period_list.append(period)
 
         max_ind = np.argmin(np.abs(max_lags))
