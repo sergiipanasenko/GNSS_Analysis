@@ -21,6 +21,7 @@ DEFAULT_MAP_PARAMS = {'size': 18, 'color': 'black',
 DEFAULT_CBAR_PARAMS = {'size': 18, 'color': 'black',
                        'family': 'Times New Roman',
                        'title_pad': 18.0, 'title': 'dTEC (TECU)'}
+# 'dTEC (TECU)', 'size': 18
 
 PROJECTIONS = (
     'LambertAzimuthalEqualArea',

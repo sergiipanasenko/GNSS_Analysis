@@ -190,14 +190,15 @@ def arg_loc_min(x):
     return np.where(np.append(np.nan, np.diff(np.sign(np.append(np.nan, np.diff(x))))) == 2)[0] - 1
 
 
-def estimate_periods_lags(sig1, sig2, window=144, delta_t=5):
+def estimate_periods_lags_values(sig1, sig2, window=144, delta_t=5):
     period_list = []
     lag_list = []
+    corr_list = []
     for i in range(len(sig1)):
         left_ind, right_ind = define_indexes(i, sig1, window)
         s1 = sig1[left_ind:right_ind]
         s2 = sig2[left_ind:right_ind]
-        s1_s2_corr = correlate(s1, s2)
+        s1_s2_corr = correlate(s1 / np.std(s1), s2 / np.std(s2)) / min(len(s1), len(s2))
         lags = correlation_lags(s1.size, s2.size, mode="full")
         max_lags = lags[arg_loc_max(s1_s2_corr)]
         min_lags = lags[arg_loc_min(s1_s2_corr)]
@@ -208,11 +209,12 @@ def estimate_periods_lags(sig1, sig2, window=144, delta_t=5):
         except Exception:
             period = -1
         period_list.append(period)
-
-        max_ind = np.argmin(np.abs(max_lags))
-
-        lag_list.append(delta_t * max_lags[max_ind])
-    return np.array(period_list), np.array(lag_list)
+        # max_ind = np.argmin(np.abs(max_lags))
+        # max_ind_0 = max_lags[max_ind]
+        max_ind_1 = lags[np.where(s1_s2_corr == max(s1_s2_corr))[0][0]]
+        lag_list.append(delta_t * max_ind_1)
+        corr_list.append(max(s1_s2_corr))
+    return np.array(period_list), np.array(lag_list), np.array(corr_list)
 
 
 if __name__ == '__main__':
