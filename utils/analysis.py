@@ -209,10 +209,10 @@ def estimate_periods_lags_values(sig1, sig2, window=144, delta_t=5):
         except Exception:
             period = -1
         period_list.append(period)
-        # max_ind = np.argmin(np.abs(max_lags))
-        # max_ind_0 = max_lags[max_ind]
+        max_ind = np.argmin(np.abs(max_lags))
+        max_ind_0 = max_lags[max_ind]
         max_ind_1 = lags[np.where(s1_s2_corr == max(s1_s2_corr))[0][0]]
-        lag_list.append(delta_t * max_ind_1)
+        lag_list.append(delta_t * max_ind_0)
         corr_list.append(max(s1_s2_corr))
     return np.array(period_list), np.array(lag_list), np.array(corr_list)
 

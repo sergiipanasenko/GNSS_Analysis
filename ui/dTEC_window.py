@@ -1,6 +1,6 @@
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QMainWindow
-from ui.main_window1 import Ui_MainWindow
+from ui.main_window2 import Ui_MainWindow
 
 
 class DTEC_Window(QMainWindow, Ui_MainWindow):

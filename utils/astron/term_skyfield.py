@@ -71,7 +71,7 @@ def calculate_terminators_skyfield(latitude, longitude, altitude_km, year, month
     sunset_time = set_times.utc_datetime() if len(set_times) > 0 else None
 
     # Handle cases of polar day/night
-    if not sunrise_time and not sunset_time:
+    if (sunrise_time is None) and (sunset_time is None):
         alt, _, _ = observer_location.at(t0).observe(sun).apparent().altaz()
         if alt.degrees > effective_horizon_deg:
             return "Polar Day", "Polar Day"
@@ -83,18 +83,19 @@ def calculate_terminators_skyfield(latitude, longitude, altitude_km, year, month
 
 # --- Example Usage ---
 if __name__ == '__main__':
-    lat = 50.0
+    lat = 70.0
     lon = 14.6
-    alt_km = 100
+    alt_km = 500
 
     # Date
     dest_date = dt.datetime(2023, 4, 1).date()
 
     sunrise, sunset = calculate_terminators_skyfield(latitude=lat, longitude=lon, altitude_km=alt_km,
-                                                     year=dest_date.year, month=dest_date.month, day=dest_date.month)
+                                                     year=dest_date.year, month=dest_date.month, day=dest_date.day)
 
-    if isinstance(sunrise, str):
-        print(f"  Status: {sunrise}")
-    else:
-        print(f"  Sunrise (UTC): {sunrise.strftime('%Y-%m-%d %H:%M:%S %Z') if sunrise else 'N/A'}")
-        print(f"  Sunset (UTC):  {sunset.strftime('%Y-%m-%d %H:%M:%S %Z') if sunset else 'N/A'}")
+    # if isinstance(sunrise, str):
+    #     print(f"  Status: {sunrise}")
+    # else:
+    #     print(f"  Sunrise (UTC): {sunrise.strftime('%Y-%m-%d %H:%M:%S %Z') if sunrise else 'N/A'}")
+    #     print(f"  Sunset (UTC):  {sunset.strftime('%Y-%m-%d %H:%M:%S %Z') if sunset else 'N/A'}")
+    print(sunset)

@@ -136,7 +136,7 @@ def calculate_terminators_simple(date, latitude, longitude, altitude_km, timezon
 if __name__ == '__main__':
     lat = 50
     lon = 14.6
-    alt_km = 100
+    alt_km = 500
     tz_offset = 1
 
     # Date

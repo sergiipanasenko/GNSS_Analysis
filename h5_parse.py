@@ -59,6 +59,7 @@ def retrieve_receivers(file_path: str, borders=None):
                 record['gdlonr'] = row['gdlonr']
                 sites.append(record)
     sites.sort(key=lambda x: x['gps_site'])
+
     return sites
 
 

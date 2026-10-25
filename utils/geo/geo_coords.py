@@ -10,49 +10,65 @@ class GeoCoord:
     def __add__(self, other):
         sum_mins = self.mins
         sum_degs = self.degs
-        if self.degs >= 0:
-            sum_secs = self.secs + other.secs
-            if sum_secs >= 60:
-                sum_secs -= 60
-                sum_mins += 1
-            sum_mins += other.mins
-            if sum_mins >= 60:
-                sum_mins -= 60
-                sum_degs += 1
-        else:
-            sum_secs = self.secs - other.secs
-            if sum_secs < 0:
-                sum_secs += 60
-                sum_mins -= 1
-            sum_mins -= other.mins
-            if sum_mins < 0:
-                sum_mins += 60
-                sum_degs += 1
+        sum_secs = self.secs + other.secs
+        if sum_secs >= 60:
+            sum_secs -= 60
+            sum_mins += 1
+        if sum_secs <= -60:
+            sum_secs += 60
+            sum_mins -= 1
+        if (sum_secs > 0) and (sum_mins < 0):
+            sum_secs -= 60
+            sum_mins += 1
+        if (sum_secs < 0) and (sum_mins > 0):
+            sum_secs += 60
+            sum_mins -= 1
+        sum_mins += other.mins
+        if sum_mins >= 60:
+            sum_mins -= 60
+            sum_degs += 1
+        if sum_mins <= -60:
+            sum_mins += 60
+            sum_degs -= 1
         sum_degs += other.degs
+        if (sum_mins > 0) and (sum_degs < 0):
+            sum_mins -= 60
+            sum_degs += 1
+        if (sum_mins < 0) and (sum_degs > 0):
+            sum_mins += 60
+            sum_degs -= 1
         return GeoCoord(sum_degs, sum_mins, sum_secs)
 
     def __sub__(self, other):
         sub_mins = self.mins
         sub_degs = self.degs
-        if self.degs >= 0:
-            sub_secs = self.secs - other.secs
-            if sub_secs < 0:
-                sub_secs += 60
-                sub_mins -= 1
-            sub_mins -= other.mins
-            if sub_mins < 0:
-                sub_mins += 60
-                sub_degs -= 1
-        else:
-            sub_secs = self.secs + other.secs
-            if sub_secs >= 60:
-                sub_secs -= 60
-                sub_mins += 1
-            sub_mins += other.mins
-            if sub_mins >= 60:
-                sub_mins -= 60
-                sub_degs -= 1
+        sub_secs = self.secs - other.secs
+        if sub_secs >= 60:
+            sub_secs -= 60
+            sub_mins += 1
+        if sub_secs <= -60:
+            sub_secs += 60
+            sub_mins -= 1
+        if (sub_secs > 0) and (sub_mins < 0):
+            sub_secs -= 60
+            sub_mins += 1
+        if (sub_secs < 0) and (sub_mins > 0):
+            sub_secs += 60
+            sub_mins -= 1
+        sub_mins -= other.mins
+        if sub_mins >= 60:
+            sub_mins -= 60
+            sub_degs += 1
+        if sub_mins <= -60:
+            sub_mins += 60
+            sub_degs -= 1
         sub_degs -= other.degs
+        if (sub_mins > 0) and (sub_degs < 0):
+            sub_mins -= 60
+            sub_degs += 1
+        if (sub_mins < 0) and (sub_degs > 0):
+            sub_mins += 60
+            sub_degs -= 1
         return GeoCoord(sub_degs, sub_mins, sub_secs)
 
     def __gt__(self, other):
@@ -83,3 +99,23 @@ COORDS = {
            'min_lon': GeoCoord(15, 0), 'max_lon': GeoCoord(35, 0),
            'central_long': GeoCoord(25, 0), 'central_lat': GeoCoord(-27, 30)}
 }
+
+
+def float_to_geocoord(coord: float):
+    degs = int(coord)
+    resid_min = coord - degs
+    mins = int(resid_min * 60.0)
+    resid_sec = resid_min - mins / 60.0
+    secs = int(resid_sec * 3600.0)
+    return GeoCoord(degs, mins, secs)
+
+
+if __name__ == '__main__':
+    coord1 = GeoCoord(10, 40)
+    coord2 = GeoCoord(-5, 50)
+    coord = coord1 + coord2
+    print(coord.degs, coord.mins)
+    c1 = float_to_geocoord(-2.51)
+    c2 = float_to_geocoord(7.74)
+    print(c1.degs, c1.mins, c1.secs)
+    print(c2.degs, c2.mins, c2.secs)

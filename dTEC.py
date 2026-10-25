@@ -8,22 +8,24 @@ from numpy import median
 import logging
 from concurrent.futures import ProcessPoolExecutor
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from gnss import GnssDataParser, TIME_FORMAT
-from utils.geo.geo_coords import GeoCoord, COORDS
+from utils.geo.geo_coords import GeoCoord, COORDS, float_to_geocoord
 from utils.analysis import (get_distance_azimuth, interp_data, use_sigma_criteria,
                             estimate_phase_velocity, estimate_periods_lags_values, bandpass_filter,
-                            arg_loc_max, arg_loc_min)
+                            arg_loc_max, arg_loc_min, apf, reshape1)
 from utils.time import convert_to_hours
 
 LIMIT_DTEC = 1
 CORR_LIM = 0.5
+VEL_LIM = 10000
 SINGLE_TIME_ALL_DIR = 'Time/Single/All'
 NODE_TIME_ALL_DIR = 'Time/Nodes/All'
 SINGLE_MAP_ALL_DIR = 'Map/Single/All'
 NODE_MAP_ALL_DIR = 'Map/Nodes/All'
 NODE_MAP_DIR = 'Map/Nodes'
-NODE_TIME_DIR = 'Tine/Nodes'
+NODE_TIME_DIR = 'Time/Nodes'
 LSTID_MAP_DIR = 'Map/LSTID'
 MSTID_MAP_DIR = 'Map/MSTID'
 LSTID_TIME_DIR = 'Time/LSTID'
@@ -35,7 +37,11 @@ MSTID_MAP_ALL_DIR = 'Map/MSTID/All'
 LSTID_LON_ALL_DIR = 'Lon/LSTID/All'
 MSTID_LON_ALL_DIR = 'Lon/MSTID/All'
 LSTID_LAT_ALL_DIR = 'Lat/LSTID/All'
+LSTID_LAT_DIR = 'Lon/LSTID'
+MSTID_LAT_DIR = 'Lat/MSTID'
 MSTID_LAT_ALL_DIR = 'Lat/MSTID/All'
+MSTID_LON_DIR = 'Lon/MSTID'
+LSTID_LON_DIR = 'Lat/LSTID'
 LSTID_MAP_VEL_DIR = 'Map/LSTID/Vel'
 SINGLE_LAT_ALL_DIR = 'Lat/Single/All'
 SINGLE_LON_ALL_DIR = 'Lon/Single/All'
@@ -108,6 +114,8 @@ class DTEC_handling:
         time_coverage = self.gnss_parser.time_coverage
         min_time = time_coverage['min_time']
         max_time = time_coverage['max_time']
+        # min_time = dt.datetime(2024,9,9,8)
+        # max_time = dt.datetime(2024,9,9,14)
         time_span = self.gnss_parser.time_values['time_span']
         self.gnss_parser.get_time_dtec(store_dir, point)
         n_time = math.ceil((max_time - min_time) / time_span)
@@ -121,7 +129,6 @@ class DTEC_handling:
                 dtec_list.append(c_dtec)
                 time_list.append(c_time)
         coord_file_name = f"{self.gnss_parser.get_time_dtec_file_stem(store_dir, point)}_av.txt"
-        logging.info(f"Start creating {coord_file_name}.")
         with open(coord_file_name, mode='w') as res_file:
             for line in list(zip(time_list, dtec_list)):
                 current_time_value = line[0].strftime('%Y.%m.%d %H:%M:%S')
@@ -203,12 +210,14 @@ class DTEC_handling:
     def assemble_map(self, time_stamp: dt.datetime):
         time_str = time_stamp.strftime(TIME_FORMAT)
         # map_node_dir = f'{NODE_TIME_ALL_DIR}'
-        map_node_dir = f'{MSTID_TIME_DIR}/10-60min'
+        map_node_dir = f'{MSTID_TIME_DIR}/5-30min'
+        # map_node_dir = f'{LSTID_TIME_DIR}//30-120min'
         dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{map_node_dir}"
         os.makedirs(dir_name, exist_ok=True)
         map_node_file = f'{self.gnss_parser.get_lon_lat_dtec_file_stem(map_node_dir, time_stamp)}_av.txt'
         # time_node_dir = f'{NODE_MAP_ALL_DIR}'
-        time_node_dir = f'{MSTID_MAP_DIR}/10-60min'
+        time_node_dir = f'{MSTID_MAP_DIR}/5-30min'
+        # time_node_dir = f'{LSTID_MAP_DIR}/30-120min'
         point = dict()
         with open(map_node_file, mode='w') as out_file:
             lat = dTEC_parser.gnss_parser.coord_coverage['min_lat']
@@ -229,16 +238,17 @@ class DTEC_handling:
                                     dtec_value = line.split()[-1]
                                     out_file.write(f"{lat.get_float_degs()}\t{lon.get_float_degs()}\t{dtec_value}\n")
                                     break
-                    lon += GeoCoord(1, 0)
-                lat += GeoCoord(1, 0)
+                    lon += GeoCoord(0, 30)
+                lat += GeoCoord(0, 30)
 
-    def get_lstid_map(self, time_stamp: dt.datetime, radius=500):
+    def get_lstid_map(self, time_stamp: dt.datetime, radius=250):
         coord_coverage = self.gnss_parser.coord_coverage
-        output_dir = f"{LSTID_TIME_ALL_DIR}"
+        # output_dir = f"{LSTID_TIME_ALL_DIR}"
+        output_dir = f"{MSTID_TIME_DIR}/5-30min"
         dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{output_dir}"
         os.makedirs(dir_name, exist_ok=True)
         lstid_file = f'{self.gnss_parser.get_lon_lat_dtec_file_stem(output_dir, time_stamp)}_av.txt'
-        time_node_dir = f'{NODE_TIME_ALL_DIR}'
+        time_node_dir = f'{NODE_TIME_DIR}/5-30min'
         time_node_file = f'{self.gnss_parser.get_lon_lat_dtec_file_stem(time_node_dir, time_stamp)}_av.txt'
         data = []
         with open(time_node_file, mode='r') as in_file:
@@ -246,11 +256,14 @@ class DTEC_handling:
                 row_float = list(map(float, row.split()))
                 data.append(row_float)
         min_lat = coord_coverage['min_lat'].get_float_degs()
-        max_lat = coord_coverage['max_lat'].get_float_degs()
+        # max_lat = coord_coverage['max_lat'].get_float_degs()
+        max_lat = GeoCoord(56,0).get_float_degs()
         min_lon = coord_coverage['min_lon'].get_float_degs()
         max_lon = coord_coverage['max_lon'].get_float_degs()
-        lat_span = self.gnss_parser.coord_values['lat_span'].get_float_degs()
-        lon_span = self.gnss_parser.coord_values['lon_span'].get_float_degs()
+        # lat_span = self.gnss_parser.coord_values['lat_span'].get_float_degs()
+        # lon_span = self.gnss_parser.coord_values['lon_span'].get_float_degs()
+        lat_span = GeoCoord(0, 15).get_float_degs()
+        lon_span = GeoCoord(0, 15).get_float_degs()
         n_lat = math.ceil((max_lat - min_lat) / lat_span)
         plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
         with open(lstid_file, mode='w') as res_file:
@@ -271,7 +284,7 @@ class DTEC_handling:
 
     def get_mstid_map(self, time_stamp: dt.datetime, radius=150):
         coord_coverage = self.gnss_parser.coord_coverage
-        mstid_output_dir = f"{MSTID_TIME_ALL_DIR}"
+        mstid_output_dir = f"{MSTID_TIME_DIR}/5-30min"
         mstid_dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{mstid_output_dir}"
         os.makedirs(mstid_dir_name, exist_ok=True)
         mstid_file = f'{self.gnss_parser.get_lon_lat_dtec_file_stem(mstid_output_dir, time_stamp)}_av.txt'
@@ -320,7 +333,7 @@ class DTEC_handling:
                                 dtec_value -= lstid_dtec_value
                         res_file.write(f"{lat}\t{lon}\t{dtec_value}\n")
 
-    def get_lstid_time(self, point, radius=500):
+    def get_lstid_time(self, radius, point):
         spec_lat = point['lat'].get_float_degs()
         spec_lon = point['lon'].get_float_degs()
         time_coverage = self.gnss_parser.time_coverage
@@ -328,8 +341,10 @@ class DTEC_handling:
         lat_max = dTEC_parser.gnss_parser.coord_coverage['max_lat']
         lon_max = dTEC_parser.gnss_parser.coord_coverage['max_lon']
         dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{LSTID_MAP_ALL_DIR}"
+        # dir_name = f"{self.gnss_parser.out_dir}/{self.gnss_parser.add_dir}/{MSTID_MAP_ALL_DIR}"
         os.makedirs(dir_name, exist_ok=True)
         lstid_time_file = f'{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, point)}_av.txt'
+        # lstid_time_file = f'{self.gnss_parser.get_time_dtec_file_stem(MSTID_MAP_ALL_DIR, point)}_av.txt'
         map_node_dir = f'{NODE_MAP_ALL_DIR}'
         time_stamp = time_coverage['min_time']
         time_max = time_coverage['max_time']
@@ -349,8 +364,8 @@ class DTEC_handling:
                         for row in in_file:
                             file_data.append(row.split('\t'))
                     data[(lat_float, lon_float)] = file_data
-                lon += GeoCoord(1, 0)
-            lat += GeoCoord(1, 0)
+                lon += GeoCoord(0, 30)
+            lat += GeoCoord(0, 30)
         with open(lstid_time_file, mode='w') as out_file:
             while time_stamp <= time_max:
                 time_str = time_stamp.strftime(TIME_FORMAT)
@@ -364,7 +379,7 @@ class DTEC_handling:
                     out_file.write(f"{time_str}\t{median(lstid_time_dtec)}\n")
                 time_stamp += dt.timedelta(seconds=30)
 
-    def get_mstid_time(self, point, radius=150):
+    def get_mstid_time(self, point, radius=50):
         spec_lat = point['lat'].get_float_degs()
         spec_lon = point['lon'].get_float_degs()
         time_coverage = self.gnss_parser.time_coverage
@@ -402,8 +417,8 @@ class DTEC_handling:
                         for row in in_file:
                             file_data.append(row.split('\t'))
                     data[(lat_float, lon_float)] = file_data
-                lon += GeoCoord(1, 0)
-            lat += GeoCoord(1, 0)
+                lon += GeoCoord(0, 30)
+            lat += GeoCoord(0, 30)
         with open(mstid_time_file, mode='w') as out_file:
             while time_stamp <= time_max:
                 time_str = time_stamp.strftime(TIME_FORMAT)
@@ -424,12 +439,14 @@ class DTEC_handling:
 
     def get_lstid_lat_time(self, lon):
         dist_0 = 1000
-        lstid_lat_time_file = f'{self.gnss_parser.get_lat_time_dtec_file_stem(LSTID_LON_ALL_DIR, lon)}_av.txt'
+        out_dir = f"{LSTID_LAT_DIR}/30-120min"
+        lstid_lat_time_file = f'{self.gnss_parser.get_lat_time_dtec_file_stem(out_dir, lon)}_av.txt'
         spec_lon_float = lon.get_float_degs()
         coord_coverage = self.gnss_parser.coord_coverage
         min_lat = coord_coverage['min_lat'].get_float_degs()
         max_lat = coord_coverage['max_lat'].get_float_degs()
-        lat_span = self.gnss_parser.coord_values['lat_span'].get_float_degs()
+        # lat_span = self.gnss_parser.coord_values['lat_span'].get_float_degs()
+        lat_span = GeoCoord(0, 30).get_float_degs()
         n_lat = math.ceil((max_lat - min_lat) / lat_span)
         plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
         point = dict()
@@ -447,8 +464,8 @@ class DTEC_handling:
                             c_dist = dist
                             point['lat'] = node_lat
                             point['lon'] = node_lon
-                        node_lon += GeoCoord(1, 0)
-                    node_lat += GeoCoord(1, 0)
+                        node_lon += GeoCoord(0, 30)
+                    node_lat += GeoCoord(0, 30)
                 node_dir = f"{LSTID_MAP_DIR}/30-120min"
                 node_file = f'{self.gnss_parser.get_time_dtec_file_stem(node_dir, point)}_av.txt'
                 with open(node_file, mode='r') as in_file:
@@ -460,12 +477,14 @@ class DTEC_handling:
 
     def get_mstid_lat_time(self, lon):
         dist_0 = 1000
-        mstid_lat_time_file = f'{self.gnss_parser.get_lat_time_dtec_file_stem(MSTID_LON_ALL_DIR, lon)}_av.txt'
+        out_dir = f"{MSTID_LAT_DIR}/5-30min"
+        mstid_lat_time_file = f'{self.gnss_parser.get_lat_time_dtec_file_stem(out_dir, lon)}_av.txt'
         spec_lon_float = lon.get_float_degs()
         coord_coverage = self.gnss_parser.coord_coverage
         min_lat = coord_coverage['min_lat'].get_float_degs()
         max_lat = coord_coverage['max_lat'].get_float_degs()
-        lat_span = self.gnss_parser.coord_values['lat_span'].get_float_degs()
+        # lat_span = self.gnss_parser.coord_values['lat_span'].get_float_degs()
+        lat_span = GeoCoord(0, 30).get_float_degs()
         n_lat = math.ceil((max_lat - min_lat) / lat_span)
         plot_lat = [min_lat + lat_span / 2 + j * lat_span for j in range(n_lat)]
         point = dict()
@@ -483,9 +502,9 @@ class DTEC_handling:
                             c_dist = dist
                             point['lat'] = node_lat
                             point['lon'] = node_lon
-                        node_lon += GeoCoord(1, 0)
-                    node_lat += GeoCoord(1, 0)
-                node_dir = f"{MSTID_MAP_DIR}/10-60min"
+                        node_lon += GeoCoord(0, 30)
+                    node_lat += GeoCoord(0, 30)
+                node_dir = f"{MSTID_MAP_DIR}/5-30min"
                 node_file = f'{self.gnss_parser.get_time_dtec_file_stem(node_dir, point)}_av.txt'
                 with open(node_file, mode='r') as in_file:
                     for line in in_file:
@@ -496,13 +515,15 @@ class DTEC_handling:
 
     def get_lstid_lon_time(self, lat):
         dist_0 = 1000
+        out_dir = f"{LSTID_LON_DIR}/30-120min"
         self.gnss_parser.coord_values['lat'] = lat
-        lstid_lon_time_file = f'{self.gnss_parser.get_lon_time_dtec_file_stem(LSTID_LAT_ALL_DIR, lat)}_av.txt'
+        lstid_lon_time_file = f'{self.gnss_parser.get_lon_time_dtec_file_stem(out_dir, lat)}_av.txt'
         spec_lat_float = lat.get_float_degs()
         coord_coverage = self.gnss_parser.coord_coverage
         min_lon = coord_coverage['min_lon'].get_float_degs()
         max_lon = coord_coverage['max_lon'].get_float_degs()
-        lon_span = self.get_corr_lon_span()
+        # lon_span = self.get_corr_lon_span()
+        lon_span = GeoCoord(0, 30).get_float_degs()
         n_lon = math.ceil((max_lon - min_lon) / lon_span)
         plot_lon = [min_lon + lon_span / 2 + j * lon_span for j in range(n_lon)]
         point = dict()
@@ -520,8 +541,8 @@ class DTEC_handling:
                             c_dist = dist
                             point['lat'] = node_lat
                             point['lon'] = node_lon
-                        node_lon += GeoCoord(1, 0)
-                    node_lat += GeoCoord(1, 0)
+                        node_lon += GeoCoord(0, 30)
+                    node_lat += GeoCoord(0, 30)
                 node_dir = f"{LSTID_MAP_DIR}/30-120min"
                 node_file = f'{self.gnss_parser.get_time_dtec_file_stem(node_dir, point)}_av.txt'
                 with open(node_file, mode='r') as in_file:
@@ -534,12 +555,14 @@ class DTEC_handling:
     def get_mstid_lon_time(self, lat):
         dist_0 = 1000
         self.gnss_parser.coord_values['lat'] = lat
-        mstid_lon_time_file = f'{self.gnss_parser.get_lon_time_dtec_file_stem(MSTID_LAT_ALL_DIR, lat)}_av.txt'
+        out_dir = f"{MSTID_LON_DIR}/5-30min"
+        mstid_lon_time_file = f'{self.gnss_parser.get_lon_time_dtec_file_stem(out_dir, lat)}_av.txt'
         spec_lat_float = lat.get_float_degs()
         coord_coverage = self.gnss_parser.coord_coverage
         min_lon = coord_coverage['min_lon'].get_float_degs()
         max_lon = coord_coverage['max_lon'].get_float_degs()
-        lon_span = self.get_corr_lon_span()
+        # lon_span = self.get_corr_lon_span()
+        lon_span = GeoCoord(0, 30).get_float_degs()
         n_lon = math.ceil((max_lon - min_lon) / lon_span)
         plot_lon = [min_lon + lon_span / 2 + j * lon_span for j in range(n_lon)]
         point = dict()
@@ -557,9 +580,9 @@ class DTEC_handling:
                             c_dist = dist
                             point['lat'] = node_lat
                             point['lon'] = node_lon
-                        node_lon += GeoCoord(1, 0)
-                    node_lat += GeoCoord(1, 0)
-                node_dir = f"{MSTID_MAP_DIR}/10-60min"
+                        node_lon += GeoCoord(0, 30)
+                    node_lat += GeoCoord(0, 30)
+                node_dir = f"{MSTID_MAP_DIR}/5-30min"
                 node_file = f'{self.gnss_parser.get_time_dtec_file_stem(node_dir, point)}_av.txt'
                 with open(node_file, mode='r') as in_file:
                     for line in in_file:
@@ -570,17 +593,22 @@ class DTEC_handling:
 
     def get_filtered_time(self, point, periods=None):
         time_coverage = self.gnss_parser.time_coverage
+        # input_file = f'{self.gnss_parser.get_time_dtec_file_stem(NODE_MAP_ALL_DIR, point)}_av.txt'
         # input_file = f'{self.gnss_parser.get_time_dtec_file_stem(LSTID_MAP_ALL_DIR, point)}_av.txt'
         input_file = f'{self.gnss_parser.get_time_dtec_file_stem(MSTID_MAP_ALL_DIR, point)}_av.txt'
         if periods is None:
+            # store_dir = f'{NODE_MAP_DIR}/Interp'
             # store_dir = f'{LSTID_MAP_DIR}/Interp'
             store_dir = f'{MSTID_MAP_DIR}/Interp'
         else:
+            # store_dir = f'{NODE_MAP_DIR}/{periods[0]}-{periods[1]}min'
             # store_dir = f'{LSTID_MAP_DIR}/{periods[0]}-{periods[1]}min'
             store_dir = f'{MSTID_MAP_DIR}/{periods[0]}-{periods[1]}min'
         filtered_file = f'{self.gnss_parser.get_time_dtec_file_stem(store_dir, point)}_av.txt'
         time = time_coverage['min_time']
         time_max = time_coverage['max_time']
+        # time = dt.datetime(2024, 9, 9, 8)
+        # time_max = dt.datetime(2024, 9, 9, 14)
         time_orig = []
         while time <= time_max:
             time_orig.append(time)
@@ -588,21 +616,22 @@ class DTEC_handling:
         raw_data = []
         file_time = []
         file_dtec = []
-        with open(input_file, mode='r') as in_file:
-            for line in in_file:
-                raw_data.append(line.split('\t'))
-            for row in raw_data:
-                file_time.append(dt.datetime.strptime(row[0], TIME_FORMAT))
-                file_dtec.append(float(row[1]))
-        if file_time:
-            if file_time[0] != time_orig[0]:
-                file_time.insert(0, time_orig[0])
-                file_dtec.insert(0, 0)
-            if file_time[-1] != time_orig[-1]:
-                file_time.append(time_orig[-1])
-                file_dtec.append(0)
-            try:
-                file_dtec_corr = use_sigma_criteria(file_dtec, window=240)
+        try:
+            with open(input_file, mode='r') as in_file:
+                for line in in_file:
+                    raw_data.append(line.split('\t'))
+                for row in raw_data:
+                    file_time.append(dt.datetime.strptime(row[0], TIME_FORMAT))
+                    file_dtec.append(float(row[1]))
+            if file_time:
+                if file_time[0] != time_orig[0]:
+                    file_time.insert(0, time_orig[0])
+                    file_dtec.insert(0, 0)
+                if file_time[-1] != time_orig[-1]:
+                    file_time.append(time_orig[-1])
+                    file_dtec.append(0)
+                file_dtec_corr = use_sigma_criteria(file_dtec, window=60)
+                # file_dtec_corr = file_dtec
                 file_dtec_interp = interp_data(file_time, file_dtec_corr, time_orig, k=1)
                 if periods is None:
                     output_dtec = file_dtec_interp
@@ -614,52 +643,80 @@ class DTEC_handling:
                     for i in range(len(time_orig)):
                         time_str = time_orig[i].strftime(TIME_FORMAT)
                         out_file.write(f'{time_str}\t{output_dtec[i]}\n')
-            except Exception:
-                print(f"Failed to process {input_file}.")
+        except Exception:
+            print(f"Failed to process {input_file}.")
 
     def get_lstid_velocity(self, node):
+        def correct_label(lon):
+            if lon >= 0:
+                lab = f"{lon} E"
+            else:
+                lab = f"{-lon} W"
+            return lab
+
         def plot_lstid_params():
             min_time = dt.datetime(2023, 4, 1, 0, 0)
             max_time = dt.datetime(2023, 4, 2, 0, 0)
-            fig, ax = plt.subplots(5, 1)
-            fig.set_size_inches(9, 15)
-            ax[0].set_title('MSTID characteristics on 2023-04-01')
-            ax[0].plot(time_orig, prev_lat_dtec,
-                       label=f"{prev_lat_node['lat'].degs} N, {prev_lat_node['lon'].degs} E")
-            ax[0].plot(time_orig, next_lat_dtec,
-                       label=f"{next_lat_node['lat'].degs} N, {next_lat_node['lon'].degs} E")
-            ax[0].set_ylabel('dTEC (TECU)')
-            ax[0].legend()
-            ax[0].set_xlim([min_time, max_time])
-            ax[1].plot(time_orig, prev_lon_dtec,
-                       label=f"{prev_lon_node['lat'].degs} N, {prev_lon_node['lon'].degs} E")
-            ax[1].plot(time_orig, next_lon_dtec,
-                       label=f"{next_lon_node['lat'].degs} N, {next_lon_node['lon'].degs} E")
-            ax[1].set_ylabel('dTEC (TECU)')
-            ax[1].legend()
-            ax[1].set_xlim([min_time, max_time])
-            ax[2].scatter(time_vel, lat_period_vel, label='Latitude', s=2)
-            ax[2].scatter(time_vel, lon_period_vel, label='Longitude', s=2)
-            ax[2].set_ylabel('Main period (min)')
-            ax[2].grid(axis='y')
-            ax[2].legend()
-            ax[2].set_ylim([10, 60])
-            ax[2].set_xlim([min_time, max_time])
-            ax[3].scatter(time_vel, abs_velocity, label=f"{node['lat'].degs} N, {node['lon'].degs} E", s=2)
-            ax[3].grid(axis='y')
-            ax[3].set_ylabel('Velocity (m/s)')
-            ax[3].legend()
-            ax[3].set_ylim([0, 1000])
-            ax[3].set_xlim([min_time, max_time])
-            ax[4].scatter(time_vel, azimuth, label=f"{node['lat'].degs} N, {node['lon'].degs} E", s=2)
-            ax[4].set_ylabel('Azimuth (deg)')
-            ax[4].grid(axis='y')
-            ax[4].legend()
-            ax[4].set_xlabel('Time (UT)')
-            ax[4].set_ylim([0, 360])
-            ax[4].set_xlim([min_time, max_time])
+            fig, ax = plt.subplots(6, 2, width_ratios=(98, 2), sharex='col')
+            fig.set_size_inches(8, 12)
+            # ax[0].set_title('LSTID characteristics on 2023-04-01')
+            ax[0][0].plot(time_orig, prev_lat_dtec,
+                       label=f"{prev_lat_node['lat'].degs} N, {correct_label(prev_lat_node['lon'].degs)}", lw=3)
+            ax[0][0].plot(time_orig, next_lat_dtec,
+                       label=f"{next_lat_node['lat'].degs} N, {correct_label(next_lat_node['lon'].degs)}", lw=3)
+            ax[0][0].set_ylabel('dTEC (TECU)', size='xx-large')
+            ax[0][0].legend(fontsize='x-large', framealpha=0.4)
+            ax[0][0].set_xlim([min_time, max_time])
+            ax[0][0].tick_params(axis='y', labelsize='x-large')
+            ax[0][1].axis("off")
+            ax[1][0].plot(time_orig, prev_lon_dtec,
+                       label=f"{prev_lon_node['lat'].degs} N, {correct_label(prev_lon_node['lon'].degs)}", lw=3)
+            ax[1][0].plot(time_orig, next_lon_dtec,
+                       label=f"{next_lon_node['lat'].degs} N, {correct_label(next_lon_node['lon'].degs)}", lw=3)
+            ax[1][0].set_ylabel('dTEC (TECU)', size='xx-large')
+            ax[1][0].legend(fontsize='x-large', framealpha=0.4)
+            ax[1][0].set_xlim([min_time, max_time])
+            ax[1][0].tick_params(axis='y', labelsize='x-large')
+            ax[1][1].axis("off")
+            im = ax[2][0].pcolor(T, P, np.transpose(res_apf), cmap=plt.cm.rainbow)
+            ax[2][0].set_ylabel(r'$T$ (min)', size='xx-large')
+            ax[2][0].grid(axis='y')
+            ax[2][0].tick_params(axis='y', labelsize='x-large')
+            cbar = fig.colorbar(im, cax=ax[2][1], orientation='vertical')
+            cbar.ax.set_ylabel(r'$\mathrm{dTEC_m}$ (TECU)', rotation=270, labelpad=20.0, size='xx-large')
+            cbar.ax.tick_params(axis='y', labelsize='x-large')
+            ax[3][0].scatter(time_vel, lat_period_vel, label=f"{correct_label(next_lat_node['lon'].degs)}", s=5)
+            ax[3][0].scatter(time_vel, lon_period_vel, label=f"{next_lon_node['lat'].degs} N", s=5)
+            ax[3][0].set_ylabel(r'$T$ (min)', size='xx-large')
+            ax[3][0].grid(axis='y')
+            ax[3][0].legend(fontsize='x-large')
+            ax[3][0].set_ylim([30, 120])
+            ax[3][0].set_xlim([min_time, max_time])
+            ax[3][0].tick_params(axis='y', labelsize='x-large')
+            ax[3][1].axis("off")
+            ax[4][0].scatter(time_vel, abs_velocity, label=f"{node['lat'].degs} N, {correct_label(node['lon'].degs)}", s=5)
+            ax[4][0].grid(axis='y')
+            ax[4][0].set_ylabel(r'$V$ (m/s)', size='xx-large')
+            ax[4][0].legend(fontsize='x-large')
+            ax[4][0].set_ylim([0, 2000])
+            ax[4][0].set_xlim([min_time, max_time])
+            ax[4][0].tick_params(axis='y', labelsize='x-large')
+            ax[4][1].axis("off")
+            ax[5][0].scatter(time_vel, azimuth, label=f"{node['lat'].degs} N, {correct_label(node['lon'].degs)}", s=5)
+            ax[5][0].set_ylabel(r'$\phi$ (deg)', size='xx-large')
+            ax[5][0].grid(axis='y')
+            ax[5][0].legend(fontsize='x-large')
+            ax[5][0].set_xlabel('Time (UT)', size='xx-large')
+            ax[5][0].set_ylim([0, 359])
+            ax[5][0].set_xlim([min_time, max_time])
+            ax[5][0].set_xticklabels(['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00', '24:00'])
+            ax[5][0].tick_params(axis='both', labelsize='x-large')
+            ax[5][0].set_yticks([0, 90, 180, 270])
+            ax[5][1].axis("off")
             plt.tight_layout()
-            plt.show()
+            plt.subplots_adjust(hspace=0.05, wspace=0.05)
+            plt.savefig(f"{node['lat'].degs} N, {correct_label(node['lon'].degs)}.png", dpi=300)
+            # plt.show()
 
         def parse_time_dtec_file(node_file):
             dtec_values = []
@@ -669,8 +726,8 @@ class DTEC_handling:
                     dtec_values.append(float(row[1]))
             return np.array(dtec_values)
 
-        lat_delta = GeoCoord(1, 0)
-        lon_delta = GeoCoord(1, 0)
+        lat_delta = GeoCoord(2, 0)
+        lon_delta = GeoCoord(2, 0)
 
         prev_lat_node = {
             'lat': node['lat'] - lat_delta,
@@ -684,16 +741,22 @@ class DTEC_handling:
             'lat': node['lat'],
             'lon': node['lon'] - lon_delta
         }
+        current_node = {
+            'lat': node['lat'],
+            'lon': node['lon']
+        }
         next_lon_node = {
             'lat': node['lat'],
             'lon': node['lon'] + lon_delta
         }
-        node_dir = f"{MSTID_MAP_DIR}/10-60min"
-        # node_dir = f"{LSTID_MAP_DIR}/30-120min"
+        # node_dir = f"{NODE_MAP_DIR}/30-120min"
+        # node_dir = f"{MSTID_MAP_DIR}/10-60min"
+        node_dir = f"{LSTID_MAP_DIR}/30-120min"
         prev_lat_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(node_dir, prev_lat_node)}_av.txt"
         next_lat_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(node_dir, next_lat_node)}_av.txt"
         prev_lon_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(node_dir, prev_lon_node)}_av.txt"
         next_lon_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(node_dir, next_lon_node)}_av.txt"
+        current_node_file = f"{self.gnss_parser.get_time_dtec_file_stem(node_dir, current_node)}_av.txt"
         c_time = self.gnss_parser.time_coverage['min_time']
         time_max = self.gnss_parser.time_coverage['max_time']
         time_orig = []
@@ -705,7 +768,13 @@ class DTEC_handling:
         next_lat_dtec = parse_time_dtec_file(next_lat_node_file)
         prev_lon_dtec = parse_time_dtec_file(prev_lon_node_file)
         next_lon_dtec = parse_time_dtec_file(next_lon_node_file)
-        window = 300
+        current_dtec = parse_time_dtec_file(current_node_file)
+        min_period, max_period = 60, 240
+        res_apf = np.abs(apf(reshape1(current_dtec), period=(min_period, max_period, 1)))
+        delta_t = 0.5
+        p = np.arange(min_period * delta_t, max_period * delta_t + delta_t, delta_t)
+        T, P = np.meshgrid(time_orig, p)
+        window = 480
         lat_period_list, lat_lag_list, lat_corr_list = estimate_periods_lags_values(next_lat_dtec, prev_lat_dtec,
                                                                                     window=window, delta_t=0.5)
         lon_period_list, lon_lag_list, lon_corr_list = estimate_periods_lags_values(next_lon_dtec, prev_lon_dtec,
@@ -718,9 +787,10 @@ class DTEC_handling:
                                                  prev_lon_node['lon'].get_float_degs(),
                                                  next_lon_node['lat'].get_float_degs(),
                                                  next_lon_node['lon'].get_float_degs())
-        vel_dir = f"{MSTID_MAP_DIR}/10-60min/Vel1"
-        # vel_dir = f"{LSTID_MAP_DIR}/30-120min/Vel1"
-        lstid_vel_file = f'{self.gnss_parser.get_time_dtec_file_stem(vel_dir, node)}_av_test.txt'
+        # vel_dir = f"{MSTID_MAP_DIR}/10-60min/Vel1"
+        vel_dir = f"{LSTID_MAP_DIR}/30-120min/Vel_test"
+        # vel_dir = f"{NODE_MAP_DIR}/30-120min/Vel"
+        lstid_vel_file = f'{self.gnss_parser.get_time_dtec_file_stem(vel_dir, node)}_av.txt'
         abs_velocity = []
         azimuth = []
         time_vel = []
@@ -738,7 +808,7 @@ class DTEC_handling:
                 time_str = time_orig[i].strftime(TIME_FORMAT)
                 lat_corr = lat_corr_list[i]
                 lon_corr = lon_corr_list[i]
-                if (vel < 1000) and (lat_corr > CORR_LIM) and (lon_corr > CORR_LIM):
+                if (vel <= VEL_LIM) and (lat_corr > CORR_LIM) and (lon_corr > CORR_LIM):
                     out_file.write(f'{time_str}\t{vel}\t{azm}\t{period}\t{lat_corr_list[i]}\t{lon_corr_list[i]}\n')
                     time_vel.append(time_orig[i])
                     abs_velocity.append(vel)
@@ -782,8 +852,8 @@ class DTEC_handling:
         return max_time, max_dtec, global_max_time, global_max_dtec
 
     def get_params(self):
-        input_file = 'maximums.txt'
-        output_file = 'MSTID_Azimuth_new.txt'
+        input_file = 'maximums_April.txt'
+        output_file = 'LSTID_Wavelength_April.txt'
         raw_data = []
         file_time = []
         file_lat = []
@@ -794,22 +864,23 @@ class DTEC_handling:
         for row in raw_data:
             file_lat.append(float(row[0]))
             file_lon.append(float(row[1]))
-            # time_str = row[2].strip('\n')
-            time_str = "2023-04-01 19:30:00"
+            time_str = row[2].strip('\n')
+            # time_str = "2023-04-01 19:30:00"
             file_time.append(time_str)
-        lat_list = list(map(int, file_lat))
-        lon_list = list(map(int, file_lon))
+        lat_list = list(map(float_to_geocoord, file_lat))
+        lon_list = list(map(float_to_geocoord, file_lon))
         data_list = list(zip(lat_list, lon_list, file_time))
         with open(output_file, mode='w') as out_file:
             for data in data_list:
                 lat, lon, max_time = data
-                if (lat < 60) and (lon < 21):
+                if (lat < GeoCoord(60,0)) and (lon < GeoCoord(21, 0)):
                     point = {
-                        'lat': GeoCoord(lat, 0),
-                        'lon': GeoCoord(lon, 0)
+                        'lat': lat,
+                        'lon': lon
                     }
-                    vel_dir = f"{MSTID_MAP_DIR}/10-60min/Vel1"
-                    lstid_vel_file = f"{self.gnss_parser.get_time_dtec_file_stem(vel_dir, point)}_av_test.txt"
+                    vel_dir = f"{LSTID_MAP_DIR}/30-120min/Vel"
+                    # vel_dir = f"{NODE_MAP_DIR}/30-120min/Vel"
+                    lstid_vel_file = f"{self.gnss_parser.get_time_dtec_file_stem(vel_dir, point)}_av.txt"
                     if os.path.isfile(lstid_vel_file):
                         with open(lstid_vel_file, mode='r') as vel_file:
                             for line in vel_file:
@@ -819,8 +890,9 @@ class DTEC_handling:
                                     period = row[3].strip('\n')
                                     velocity = row[1]
                                     azimuth = row[2]
-                                    if float(velocity) < 1000:
-                                        out_file.write(f"{lat}\t{lon}\t{azimuth}\n")
+                                    wavelength = float(velocity) * float(period) * 60.0 / 1000.0
+                                    # if (float(velocity) < 1000) and (float(velocity) > 200):
+                                    out_file.write(f"{lat.get_float_degs()}\t{lon.get_float_degs()}\t{wavelength}\n")
 
 
 if __name__ == '__main__':
@@ -852,11 +924,11 @@ if __name__ == '__main__':
     parser.add_argument("-i", "--longitude", help="Specific longitude in format DD:MM.",
                         default='14:36', type=str)
     parser.add_argument("-L", "--lstid_radius", help="Radius value for retrieval LSTIDs (km).",
-                        default=500, type=int)
+                        default=200, type=int)
     parser.add_argument("-M", "--mstid_radius", help="Radius value for retrieval MSTIDs (km).",
-                        default=150, type=int)
+                        default=50, type=int)
     parser.add_argument("-f", "--filter", help="Filtered time variations.",
-                        default=(10, 60), type=tuple)
+                        default=(5, 30), type=tuple)
 
     parser.add_argument("-a", "--all_times", help="Analysis for all times.", action='store_true')
     parser.add_argument("-s", "--assemble", help="Assemble map from nodes.", action='store_true')
@@ -919,8 +991,8 @@ if __name__ == '__main__':
 
     if args.all_times:
         latitudes = []
-        lat_min = GeoCoord(41, 30)
-        lat_max = GeoCoord(50, 0)
+        lat_min = GeoCoord(55, 30)
+        lat_max = GeoCoord(60, 0)
         current_lat = lat_min
         while current_lat <= lat_max:
             latitudes.append(current_lat)
@@ -935,8 +1007,6 @@ if __name__ == '__main__':
         while c_time <= time_max:
             dTEC_parser.assemble_map(c_time)
             c_time += dt.timedelta(minutes=1)
-
-    c_time = dt.datetime(year=year, month=month, day=day, hour=0, minute=0)
 
     if args.lstid_map:
         while c_time <= time_max:
@@ -956,9 +1026,10 @@ if __name__ == '__main__':
                     'lat': lat,
                     'lon': lon
                 }
-                dTEC_parser.get_lstid_time(point)
-                lon += GeoCoord(1, 0)
-            lat += GeoCoord(1, 0)
+                dTEC_parser.get_lstid_time(radius=args.lstid_radius, point=point)
+                lon += GeoCoord(0, 30)
+            lat += GeoCoord(0, 30)
+
     if args.mstid_time:
         lat = lat_min
         while lat <= lat_max:
@@ -969,8 +1040,8 @@ if __name__ == '__main__':
                     'lon': lon
                 }
                 dTEC_parser.get_mstid_time(point)
-                lon += GeoCoord(1, 0)
-            lat += GeoCoord(1, 0)
+                lon += GeoCoord(0, 30)
+            lat += GeoCoord(0, 30)
 
     if args.lstid_filter:
         lat = lat_min
@@ -982,67 +1053,79 @@ if __name__ == '__main__':
                     'lon': lon
                 }
                 dTEC_parser.get_filtered_time(point, args.filter)
-                lon += GeoCoord(1, 0)
-            lat += GeoCoord(1, 0)
+                lon += GeoCoord(0, 30)
+            lat += GeoCoord(0, 30)
 
-    if args.lstid_velocity:
-        lat = lat_min + GeoCoord(2, 0)
-        while lat <= lat_max - GeoCoord(2, 0):
-            lon = lon_min + GeoCoord(2, 0)
-            while lon <= lon_max - GeoCoord(2, 0):
-                node = {
-                    'lat': lat,
-                    'lon': lon
-                }
-                try:
-                    dTEC_parser.get_lstid_velocity(node)
-                except Exception:
-                    print(f"lat: {node['lat'].degs}, lon: {node['lon'].degs} is failed.")
-                lon += GeoCoord(1, 0)
-            lat += GeoCoord(1, 0)
+    # if args.lstid_velocity:
+    #     lat = lat_min + GeoCoord(2, 0)
+    #     while lat <= lat_max - GeoCoord(2, 0):
+    #         lon = lon_min + GeoCoord(2, 0)
+    #         while lon <= lon_max - GeoCoord(2, 0):
+    #             node = {
+    #                 'lat': lat,
+    #                 'lon': lon
+    #             }
+    #             try:
+    #                 dTEC_parser.get_lstid_velocity(node)
+    #             except Exception:
+    #                 print(f"lat: {node['lat'].degs}.{node['lat'].mins}, lon: {node['lon'].degs}.{node['lon'].mins} is failed.")
+    #             lon += GeoCoord(0, 30)
+    #         lat += GeoCoord(0, 30)
     if args.lstid_velocity:
         node = {
-            'lat': GeoCoord(40,0),
+            'lat': GeoCoord(50, 0),
             'lon': GeoCoord(0, 0)
         }
         dTEC_parser.get_lstid_velocity(node)
 
     if args.local:
-        time_ref = dt.datetime(2023, 4, 1, 19, 30, 0)
-        low_time = dt.datetime(2023, 4, 1, 18, 0, 0)
-        up_time = dt.datetime(2023, 4, 1, 21, 0, 0)
+        time_ref = dt.datetime(2023, 4, 3, 18, 30, 0)
+        low_time = dt.datetime(2023, 4, 3, 16, 0, 0)
+        up_time = dt.datetime(2023, 4, 3, 20, 0, 0)
         lat = lat_min
         lat_max = GeoCoord(65, 0)
         times_ref = []
         lon = lon_min
-        output_file = 'maximums1.txt'
+        output_file = 'maximums_float_April_03.txt'
+        output_file_ampl = 'maximums_ampl_April_03.txt'
+        cur_lat_min = 38
+        cur_lat_max = 59
+        cur_lon_min = -8
+        cur_lon_max = 20
         while lon <= lon_max:
             times_ref.append(time_ref)
-            lon += GeoCoord(1, 0)
-        with open(output_file, mode='w') as out_file:
-            while lat <= lat_max:
-                lon = lon_min
-                i_lon = 0
-                while lon <= lon_max:
-                    point = {
-                        'lat': lat,
-                        'lon': lon
-                    }
-                    max_time, max_dtec, global_max_time, global_max_dtec = (
-                        dTEC_parser.find_max_values(point, times_ref[i_lon], (low_time, up_time)))
-                    times_ref[i_lon] = max_time
-                    out_file.write(f"{point['lat'].get_float_degs()}\t"
-                                   f"{point['lon'].get_float_degs()}\t"
-                                   f"{max_time}\n")
-                    lon += GeoCoord(1, 0)
-                    i_lon += 1
-                lat += GeoCoord(1, 0)
+            lon += GeoCoord(0, 30)
+        with open(output_file_ampl, mode='w') as out_file_ampl:
+            with open(output_file, mode='w') as out_file:
+                while lat <= lat_max:
+                    lon = lon_min
+                    i_lon = 0
+                    while lon <= lon_max:
+                        point = {
+                            'lat': lat,
+                            'lon': lon
+                        }
+                        max_time, max_dtec, global_max_time, global_max_dtec = (
+                            dTEC_parser.find_max_values(point, times_ref[i_lon], (low_time, up_time)))
+                        times_ref[i_lon] = max_time
+                        lat_float = point['lat'].get_float_degs()
+                        lon_float = point['lon'].get_float_degs()
+                        if (cur_lat_min <= lat_float <= cur_lat_max) and (cur_lon_min <= lon_float <= cur_lon_max):
+                            out_file.write(f"{lat_float}\t"
+                                           f"{lon_float}\t"
+                                           f"{convert_to_hours(max_time)}\n")
+                            out_file_ampl.write(f"{lat_float}\t"
+                                                f"{lon_float}\t"
+                                                f"{max_dtec}\n")
+                        lon += GeoCoord(0, 30)
+                        i_lon += 1
+                    lat += GeoCoord(0, 30)
 
     if args.param:
         dTEC_parser.get_params()
 
     if args.lstid_lon:
-        dTEC_parser.get_mstid_lat_time(GeoCoord(3, 0))
+        dTEC_parser.get_lstid_lat_time(GeoCoord(0, 0))
 
     if args.lstid_lat:
-        dTEC_parser.get_mstid_lon_time(GeoCoord(40, 0))
+        dTEC_parser.get_lstid_lon_time(GeoCoord(50, 0))

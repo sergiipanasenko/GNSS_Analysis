@@ -6,6 +6,7 @@ from ui.cartopy_figure import GeoAxesMap, DEFAULT_MAP_PARAMS, DEFAULT_GRID_PARAM
 from utils.geo.geo_coords import GeoCoord
 from dTEC import DTEC_handling, SINGLE_MAP_ALL_DIR, SINGLE_TIME_ALL_DIR, SINGLE_LAT_ALL_DIR, SINGLE_LON_ALL_DIR
 from gnss import TIME_FORMAT
+from terminator import get_terminator_coords
 
 import cartopy.crs as ccrs
 from matplotlib.patches import Rectangle
@@ -140,10 +141,10 @@ class DTECViewerForm(DTEC_Window):
             self.update_coords()
             self.update_time_values()
             self.update_data_values()
-            # self.plot_time_stamp_data()
+            self.plot_time_stamp_data()
             # self.plot_coords_stamp_data()
-            self.plot_lat_time_data()
-            self.plot_lon_time_data()
+            # self.plot_lat_time_data()
+            # self.plot_lon_time_data()
 
     def update_coords(self):
         self.combo_region.setCurrentIndex(0)
@@ -161,7 +162,6 @@ class DTECViewerForm(DTEC_Window):
         s_width, s_height = self.map_widget.canvas.figure.get_size_inches()
         self.map_widget.axes_map = GeoAxesMap(coords=coords, is_cbar=True)
         self.map_widget.axes_map.create_figure()
-        del self.map_widget.canvas.figure
         self.map_widget.canvas.figure = self.map_widget.axes_map.figure
         self.map_color_bar = self.map_widget.axes_map.color_bar
         self.map_widget.canvas.figure.set_size_inches(s_width, s_height)
@@ -180,6 +180,10 @@ class DTECViewerForm(DTEC_Window):
         self.map_cbar_axes = self.map_widget.canvas.figure.axes[1]
         self.receiver_axes = self.receiver_widget.canvas.figure.axes[0]
         self.plot_receivers()
+        self.keo_lat_axes.set_ylim(min_lat.degs, max_lat.degs)
+        self.keo_lon_axes.set_ylim(min_lon.degs, max_lon.degs)
+        self.keo_lon_widget.canvas.draw()
+        self.keo_lat_widget.canvas.draw()
 
     def update_time_values(self):
         self.time_dtec['min_time'] = self.dt_xaxis_min.dateTime().toPyDateTime()
@@ -191,6 +195,10 @@ class DTECViewerForm(DTEC_Window):
         self.time_axes.set_xlim(min_time, max_time)
         self.time_axes.set_ylim(self.time_dtec['min_dtec'], self.time_dtec['max_dtec'])
         self.time_widget.canvas.draw()
+        self.keo_lat_axes.set_xlim((min_time, max_time))
+        self.keo_lon_axes.set_xlim((min_time, max_time))
+        self.keo_lon_widget.canvas.draw()
+        self.keo_lat_widget.canvas.draw()
 
     def update_data_values(self):
         self.data_coords['start_lon'] = GeoCoord(self.spin_lon_start_degs.value(),
@@ -256,9 +264,10 @@ class DTECViewerForm(DTEC_Window):
                         data = line.split()
                         rec_lat.append(float(data[1]))
                         rec_lon.append(float(data[2]))
-            self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=10, marker='o',
+            self.receiver_axes.scatter(rec_lon, rec_lat, c='blue', s=2, marker='o',
                                        transform=ccrs.PlateCarree())
             self.receiver_widget.canvas.draw()
+            self.receiver_widget.canvas.figure.savefig(fname='receivers.png', dpi=300)
 
     def choose_input_data_dir(self):
         input_data_directory = QFileDialog.getExistingDirectory(self, 'Select Input Data Folder',
@@ -289,11 +298,12 @@ class DTECViewerForm(DTEC_Window):
         cmap = self.map_color_bar.cmap
         v_min = self.data_dtec['min_lat_lon']
         v_max = self.data_dtec['max_lat_lon']
-        norm = Normalize(vmin=v_min, vmax=v_max)
-        self.map_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
         lat_span = self.data_coords['lat_span'].get_float_degs()
         lon_span = self.data_coords['lon_span'].get_float_degs()
         while self.dTEC_parser.gnss_parser.time_values['time'] <= self.data_time['end_time']:
+            self.update_coords()
+            norm = Normalize(vmin=v_min, vmax=v_max)
+            self.map_color_bar.update_normal(ScalarMappable(norm=norm, cmap=cmap))
             time_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(SINGLE_TIME_ALL_DIR)}_av.txt"
             if not os.path.isfile(time_file_name):
                 self.dTEC_parser.create_time_stamp_data()
@@ -315,16 +325,87 @@ class DTECViewerForm(DTEC_Window):
             title = f"{current_time} UT"
             # current_lat = float(self.lineEdit_12.text())
             # current_lon = float(self.lineEdit_13.text())
-            # self.space_axes.scatter(current_lon, current_lat, marker='o', s=30, color='black',
-            #                         transform=ccrs.PlateCarree())
-            # self.space_axes.annotate(text='Kakhovka Dam', xy=[current_lon + 0.1, current_lat + 0.1],
-            #                          transform=ccrs.PlateCarree())
+            ionos = (
+                {
+                    'lat': 54.6,
+                    'lon': 13.4,
+                    'name': 'JR055'
+                },
+                {
+                    'lat': 50.0,
+                    'lon': 14.6,
+                    'name': 'PQ052'
+                },
+                {
+                    'lat': 50.1,
+                    'lon': 4.6,
+                    'name': 'DB049'
+                },
+                {
+                    'lat': 41.9,
+                    'lon': 12.5,
+                    'name': 'RO041'
+                },
+                {
+                    'lat': 47.7,
+                    'lon': 16.6,
+                    'name': 'SO148'
+                },
+                {
+                    'lat': 40.8,
+                    'lon': 0.3,
+                    'name': 'EB040'
+                }
+            )
+            # for iono in ionos:
+            #     self.map_axes.scatter(iono['lon'], iono['lat'], marker='o', s=30, color='black',
+            #                           transform=ccrs.PlateCarree())
+            #     self.map_axes.annotate(text=iono['name'], xy=[iono['lon'], iono['lat']],
+            #                            xytext=[iono['lon'] + 1, iono['lat'] - 1],
+            #                            transform=ccrs.PlateCarree(), color='black', size=14,
+            #                            family='Times New Roman', weight='bold', backgroundcolor='#ffffff80')
+
+            # self.map_axes.plot([ionos[0]['lon'], ionos[1]['lon']], [ionos[0]['lat'], ionos[1]['lat']],
+            #                    transform=ccrs.PlateCarree(), color='blue', lw=3)
+            # self.map_axes.plot([ionos[1]['lon'], ionos[2]['lon']], [ionos[1]['lat'], ionos[2]['lat']],
+            #                    transform=ccrs.PlateCarree(), color='blue', lw=3)
+            # self.map_axes.plot([ionos[2]['lon'], ionos[0]['lon']], [ionos[2]['lat'], ionos[0]['lat']],
+            #                    transform=ccrs.PlateCarree(), color='blue', lw=3)
             self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
                                                family='Times New Roman', size=16)
-            # self.map_widget.canvas.draw()
+            sunrise, sunset = get_terminator_coords(alt_km=150,
+                                                    c_time=self.dTEC_parser.gnss_parser.time_values['time'],
+                                                    lat_step=GeoCoord(0, 15),
+                                                    lon_step=GeoCoord(0, 15))
+            sunrise_1, sunset_1 = get_terminator_coords(alt_km=350,
+                                                        c_time=self.dTEC_parser.gnss_parser.time_values['time'],
+                                                        lat_step=GeoCoord(0, 15),
+                                                        lon_step=GeoCoord(0, 15))
+            # self.map_axes.scatter(sunrise['lon'], sunrise['lat'], transform=ccrs.PlateCarree(),
+            #                       marker='o', s=20, color='gray')
+            # self.map_axes.scatter(sunset['lon'], sunset['lat'], transform=ccrs.PlateCarree(),
+            #                       marker='.', s=20, color='gray')
+            # self.map_axes.scatter(sunrise_1['lon'], sunrise_1['lat'], transform=ccrs.PlateCarree(),
+            #                       marker='o', s=20, color='white')
+            # self.map_axes.scatter(sunset_1['lon'], sunset_1['lat'], transform=ccrs.PlateCarree(),
+            #                       marker='.', s=20, color='white')'
+            # if self.receiver_file:
+            #     rec_lon = array.array('f')
+            #     rec_lat = array.array('f')
+            #     if os.path.isfile(self.receiver_file):
+            #         with open(self.receiver_file, mode='r') as rec_file:
+            #             _ = rec_file.readline()
+            #             for line in rec_file:
+            #                 data = line.split()
+            #                 rec_lat.append(float(data[1]))
+            #                 rec_lon.append(float(data[2]))
+            #     self.map_axes.scatter(rec_lon, rec_lat, c='blue', s=8, marker='o',
+            #                           transform=ccrs.PlateCarree())
+            self.map_widget.canvas.draw()
             fig_file_name = f"{self.dTEC_parser.gnss_parser.get_lon_lat_dtec_file_stem(f'{SINGLE_TIME_ALL_DIR}/fig')}.png"
             # if not os.path.isfile(fig_file_name):
             self.map_widget.canvas.figure.savefig(dpi=300, fname=fig_file_name)
+            self.map_widget.canvas.figure.savefig(dpi=300, fname="receivers_new.png")
             self.dTEC_parser.gnss_parser.time_values['time'] += dt.timedelta(minutes=1)
             self.map_widget.canvas.figure.text(x=0.7, y=0.02, s=title,
                                                family='Times New Roman', size=16, color='white')
